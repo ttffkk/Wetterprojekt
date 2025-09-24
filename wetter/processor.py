@@ -73,7 +73,7 @@ class DataProcessor:
                     continue
 
                 df = pd.read_csv(
-                    file_path, 
+                    file_path,
                     delimiter=delimiter,
                     encoding='latin-1',
                     skiprows=header_line_index
@@ -82,6 +82,11 @@ class DataProcessor:
                 df.columns = df.columns.str.strip()
                 df.replace(-999, pd.NA, inplace=True)
                 all_data.append(df)
+
+                if file_path.endswith('.txt'):
+                    new_file_path = os.path.splitext(file_path)[0] + ".csv"
+                    os.rename(file_path, new_file_path)
+                    print(f"  - Renamed to {os.path.basename(new_file_path)}")
 
             except Exception as e:
                 print(f"  - Error parsing file {os.path.basename(file_path)}: {e}")
