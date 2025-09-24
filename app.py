@@ -2,6 +2,7 @@ import yaml
 from wetter.downloader import Downloader
 from wetter.processor import DataProcessor
 from database.database import Database
+from database.importer import CsvImporter
 
 if __name__ == '__main__':
     # Load configuration from YAML file
@@ -18,7 +19,7 @@ if __name__ == '__main__':
 
     # 1. Download the data
     downloader = Downloader(url=source_config['url'])
-    downloader.run(pattern=source_config['zip_pattern'], limit=5)  # Using a limit for demonstration
+    downloader.run(pattern=source_config['zip_pattern'])  # Using a limit for demonstration
 
     # 2. Process the downloaded data
     processor = DataProcessor()
@@ -29,5 +30,11 @@ if __name__ == '__main__':
         delimiter=source_config['delimiter']
     )
 
+    # 3. Import the processed data into the database
+    importer = CsvImporter(db)
+    importer.run()
+
+
+    db.close_connection()
 
 
