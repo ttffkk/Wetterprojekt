@@ -1,28 +1,33 @@
+import yaml
 from wetter.downloader import Downloader
 from wetter.processor import DataProcessor
+from database.database import Database
 
 if __name__ == '__main__':
-    # Configuration for the DWD data source
-    DWD_URL = "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/historical/"
-    ZIP_PATTERN = r'href="(tageswerte_KL_.*?\.zip)"'
-    PRODUCT_PATTERN_TO_EXTRACT = 'produkt_'
-    DATA_FILE_GLOB = "produkt_*.txt"
-    HEADER_KEYWORD = 'STATIONS_ID'
-    DELIMITER = ';'
+    # Load configuration from YAML file
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+
+    source_config = config['source']
+    db_config = config['database']
+
+    # 0. Create the database and tables
+    db = Database(db_config['path'])
+    db.create_connection()
+    db.create_tables()
 
     # 1. Download the data
-    downloader = Downloader(url=DWD_URL)
-    downloader.run(pattern=ZIP_PATTERN, limit=5)  # Using a limit for demonstration
+    downloader = Downloader(url=source_config['url'])
+    downloader.run(pattern=source_config['zip_pattern'], limit=5)  # Using a limit for demonstration
 
     # 2. Process the downloaded data
     processor = DataProcessor()
     processed_data = processor.run(
-        file_pattern_to_extract=PRODUCT_PATTERN_TO_EXTRACT,
-        file_glob=DATA_FILE_GLOB,
-        header_keyword=HEADER_KEYWORD,
-        delimiter=DELIMITER
+        file_pattern_to_extract=source_config['product_pattern_to_extract'],
+        file_glob=source_config['data_file_glob'],
+        header_keyword=source_config['header_keyword'],
+        delimiter=source_config['delimiter']
     )
 
 
 
-    print("\nFull data import and processing workflow finished.")
