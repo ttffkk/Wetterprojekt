@@ -2,22 +2,21 @@ import requests
 import re
 import os
 
-class DWDDownloader:
-    """Handles downloading data files from the DWD server."""
-    def __init__(self, download_dir="data"):
-        self.dwd_url = "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/historical/"
+class Downloader:
+    """Handles downloading data files from a given URL."""
+    def __init__(self, url, download_dir="data"):
+        self.url = url
         self.download_dir = download_dir
 
-    def get_file_urls(self):
-        """Gets all the file urls from the DWD Open Data Server."""
-        print("Fetching file list from DWD server...")
-        response = requests.get(self.dwd_url)
+    def get_file_urls(self, pattern):
+        """Gets all the file urls from the server that match the pattern."""
+        print(f"Fetching file list from {self.url}...")
+        response = requests.get(self.url)
         response.raise_for_status()
 
-        pattern = r'href="(tageswerte_KL_.*?\.zip)"'
         file_names = re.findall(pattern, response.text)
-        file_urls = [self.dwd_url + file_name for file_name in file_names]
-        print(f"Found {len(file_urls)} files.")
+        file_urls = [self.url + file_name for file_name in file_names]
+        print(f"Found {len(file_urls)} files matching the pattern.")
         return file_urls
 
     def download_files(self, urls, limit=None):
@@ -48,8 +47,8 @@ class DWDDownloader:
             except requests.exceptions.RequestException as e:
                 print(f"Failed to download {url}. Error: {e}")
 
-    def run(self, limit=None):
+    def run(self, pattern, limit=None):
         """Runs the complete download process."""
-        file_urls = self.get_file_urls()
+        file_urls = self.get_file_urls(pattern)
         self.download_files(file_urls, limit=limit)
         print("\nFile download process finished.")
