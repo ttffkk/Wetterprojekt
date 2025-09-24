@@ -1,10 +1,19 @@
-from data_importer import DWDDataImporter
+from dwd_downloader import DWDDownloader
+from dwd_data_processor import DWDDataProcessor
 
 if __name__ == '__main__':
-    # Create an instance of the importer
-    importer = DWDDataImporter()
+    # 1. Download the data
+    downloader = DWDDownloader()
+    downloader.run(limit=5) # Using a limit for demonstration
 
-    # Run the import process, downloading and unzipping the first 5 files for demonstration
-    importer.run_import(limit=5)
+    # 2. Process the downloaded data
+    #processor = DWDDataProcessor()
+    #processed_data = processor.run()
 
-    print("\nProcess finished. The data is available in the 'data' and 'data/unzipped' directories.")
+    # 3. Display a sample of the final data
+    #if not processed_data.empty:
+     #   print("\n--- Sample of Final Processed Data ---")
+     #   print(processed_data.head())
+      #  print("\n-------------------------------------")
+
+    print("\nFull data import and processing workflow finished.")
