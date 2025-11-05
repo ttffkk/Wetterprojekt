@@ -1,9 +1,12 @@
-import yaml
+import sys
 import os
-from wetter.downloader import Downloader
-from wetter.processor import DataProcessor
-from database.database import Database
-from database.importer import CsvImporter
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import yaml
+from download_load.downloader import Downloader
+from download_load.processor import DataProcessor
+from download_load.database import Database
+from download_load.importer import CsvImporter
 
 if __name__ == '__main__':
     # Load configuration from YAML file

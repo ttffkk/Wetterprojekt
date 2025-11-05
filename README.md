@@ -72,3 +72,30 @@ This will download the latest data, process it, and store it in the SQLite datab
 ├── tests/                  # Unit and integration tests
 └── data/                   # Directory for data files and the database
 ```
+
+## Configuration
+
+The application is configured via the `config.yaml` file. Here is a description of the variables:
+
+### `source`
+
+| Variable                     | Description                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `url`                        | Base URL for downloading historical weather data from the DWD.              |
+| `zip_pattern`                | Regex pattern to find zip file names on the DWD server listing.             |
+| `product_pattern_to_extract` | Keyword to identify the actual product file within a zip archive.           |
+| `data_file_glob`             | Glob pattern for data files after extraction (e.g., "produkt_*.txt").       |
+| `header_keyword`             | Keyword to find the header line in the raw data files.                      |
+| `delimiter`                  | Delimiter used in the raw data files (e.g., ';', ',').                      |
+| `file_encoding`              | Encoding of the raw data files.                                             |
+| `na_value`                   | Value representing 'Not Available' or missing data in the raw files.        |
+| `download_dir`               | Directory where raw zip files are downloaded.                               |
+| `extract_dir`                | Directory where data files are extracted from zip archives.                 |
+| `zip_glob`                   | Glob pattern to find zip files in the download directory.                   |
+
+### `database`
+
+| Variable        | Description                                           |
+| --------------- | ----------------------------------------------------- |
+| `path`          | Path to the SQLite database file.                     |
+| `sql_file_path` | Path to the SQL script for creating database tables. |
