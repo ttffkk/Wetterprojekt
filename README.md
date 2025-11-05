@@ -21,7 +21,7 @@ A Python-based web application for analyzing historical weather data from the Ge
 
 1.  **Clone the repository:**
     ```sh
-    git clone <repository-url>
+    git clone https://github.com/ttffkk/Wetterprojekt.git
     cd <repository-directory>
     ```
 

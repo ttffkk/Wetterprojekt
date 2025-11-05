@@ -1,4 +1,5 @@
 import yaml
+import os
 from wetter.downloader import Downloader
 from wetter.processor import DataProcessor
 from database.database import Database
@@ -17,24 +18,28 @@ if __name__ == '__main__':
     db.create_connection()
     db.create_tables(db_config['sql_file_path'])
 
-    # 1. Download the data
+    # 1. Instantiate the classes
     downloader = Downloader(url=source_config['url'], download_dir=source_config['download_dir'])
-    downloader.run(pattern=source_config['zip_pattern'])  # Using a limit for demonstration
-
-    # 2. Process the downloaded data
     processor = DataProcessor(source_config['download_dir'], source_config['extract_dir'], source_config['file_encoding'], source_config['na_value'])
-    processed_data = processor.run(
-        file_pattern_to_extract=source_config['product_pattern_to_extract'],
-        file_glob=source_config['data_file_glob'],
-        header_keyword=source_config['header_keyword'],
-        delimiter=source_config['delimiter'],
-        zip_glob=source_config['zip_glob']
-    )
+    importer = CsvImporter(db)
 
-    # 3. Import the processed data into the database
-    importer = CsvImporter(db, source_config['extract_dir'])
-    importer.run(source_config['delimiter'])
+    # 2. Get all file URLs
+    file_urls = downloader.get_file_urls(pattern=source_config['zip_pattern'])
 
+    # 3. Process each file one by one
+    for url in file_urls:
+        zip_file_path = downloader.download_file(url)
+        if zip_file_path:
+            csv_file_path = processor.process_file(
+                zip_file_path,
+                source_config['product_pattern_to_extract'],
+                source_config['header_keyword'],
+                source_config['delimiter']
+            )
+            if csv_file_path:
+                importer.import_file(csv_file_path, source_config['delimiter'])
+                os.remove(csv_file_path)
+            os.remove(zip_file_path)
 
     db.close_connection()
 

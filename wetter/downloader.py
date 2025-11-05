@@ -19,36 +19,27 @@ class Downloader:
         print(f"Found {len(file_urls)} files matching the pattern.")
         return file_urls
 
-    def download_files(self, urls, limit=None):
-        """Downloads files from a list of URLs into a specified directory."""
+    def download_file(self, url):
+        """Downloads a single file from a URL into a specified directory."""
         if not os.path.exists(self.download_dir):
             os.makedirs(self.download_dir)
-        
-        files_to_download = urls[:limit] if limit else urls
-        if limit:
-            print(f"Limiting download to {limit} files.")
 
-        for url in files_to_download:
-            file_name = url.split('/')[-1]
-            local_path = os.path.join(self.download_dir, file_name)
-            
-            if os.path.exists(local_path):
-                print(f"File {file_name} already exists. Skipping.")
-                continue
+        file_name = url.split('/')[-1]
+        local_path = os.path.join(self.download_dir, file_name)
 
-            print(f"Downloading {url}...")
-            try:
-                response = requests.get(url, stream=True)
-                response.raise_for_status()
-                with open(local_path, 'wb') as f:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        f.write(chunk)
-                print(f"Successfully downloaded {file_name}")
-            except requests.exceptions.RequestException as e:
-                print(f"Failed to download {url}. Error: {e}")
+        if os.path.exists(local_path):
+            print(f"File {file_name} already exists. Skipping.")
+            return local_path
 
-    def run(self, pattern, limit=None):
-        """Runs the complete download process."""
-        file_urls = self.get_file_urls(pattern)
-        self.download_files(file_urls, limit=limit)
-        print("\nFile download process finished.")
+        print(f"Downloading {url}...")
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
+            with open(local_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            print(f"Successfully downloaded {file_name}")
+            return local_path
+        except requests.exceptions.RequestException as e:
+            print(f"Failed to download {url}. Error: {e}")
+            return None
