@@ -5,16 +5,18 @@ import pandas as pd
 
 class DataProcessor:
     """Handles unzipping, filtering, and parsing of data files."""
-    def __init__(self, download_dir="data", extract_dir="data/unzipped"):
+    def __init__(self, download_dir, extract_dir, file_encoding, na_value):
         self.download_dir = download_dir
         self.extract_dir = extract_dir
+        self.file_encoding = file_encoding
+        self.na_value = na_value
 
-    def unzip_and_filter_files(self, file_pattern_to_extract):
+    def unzip_and_filter_files(self, file_pattern_to_extract, zip_glob):
         """Unzips all .zip files, extracting only files matching the pattern, and then deletes the zip."""
         if not os.path.exists(self.extract_dir):
             os.makedirs(self.extract_dir)
 
-        zip_files = glob.glob(os.path.join(self.download_dir, "*.zip"))
+        zip_files = glob.glob(os.path.join(self.download_dir, zip_glob))
         if not zip_files:
             print("No .zip files found to process.")
             return
@@ -48,7 +50,7 @@ class DataProcessor:
 
     def find_header_line(self, file_path, header_keyword):
         """Finds the line number of the header in a data file."""
-        with open(file_path, 'r', encoding='latin-1') as f:
+        with open(file_path, 'r', encoding=self.file_encoding) as f:
             for i, line in enumerate(f):
                 if header_keyword in line:
                     return i
@@ -75,12 +77,12 @@ class DataProcessor:
                 df = pd.read_csv(
                     file_path,
                     delimiter=delimiter,
-                    encoding='latin-1',
+                    encoding=self.file_encoding,
                     skiprows=header_line_index
                 )
 
                 df.columns = df.columns.str.strip()
-                df.replace(-999, pd.NA, inplace=True)
+                df.replace(self.na_value, pd.NA, inplace=True)
                 all_data.append(df)
 
                 if file_path.endswith('.txt'):
@@ -99,10 +101,10 @@ class DataProcessor:
         print("\nSuccessfully parsed and combined all data files.")
         return full_df
 
-    def run(self, file_pattern_to_extract, file_glob, header_keyword, delimiter):
+    def run(self, file_pattern_to_extract, file_glob, header_keyword, delimiter, zip_glob):
         """Runs the complete data processing workflow."""
         print("\nStarting data processing...")
-        self.unzip_and_filter_files(file_pattern_to_extract)
+        self.unzip_and_filter_files(file_pattern_to_extract, zip_glob)
         print("\nFile extraction and cleanup finished.")
         
         print("\nStarting data parsing...")

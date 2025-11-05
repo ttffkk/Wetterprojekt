@@ -4,7 +4,7 @@ import os
 
 class Downloader:
     """Handles downloading data files from a given URL."""
-    def __init__(self, url, download_dir="data"):
+    def __init__(self, url, download_dir):
         self.url = url
         self.download_dir = download_dir
 

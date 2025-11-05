@@ -5,5 +5,12 @@ source:
   data_file_glob: "produkt_*.txt"
   header_keyword: 'STATIONS_ID'
   delimiter: ';'
+  file_encoding: 'latin-1'
+  na_value: -999
+  download_dir: "data"
+  extract_dir: "data/unzipped"
+  zip_glob: "*.zip"
+
 database:
   path: "data/wetter.db"
+  sql_file_path: "Create_table.sql"
