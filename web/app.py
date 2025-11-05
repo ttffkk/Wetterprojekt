@@ -3,10 +3,10 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yaml
-from download_load.downloader import Downloader
-from download_load.processor import DataProcessor
-from download_load.database import Database
-from download_load.importer import CsvImporter
+from data_ingestion.downloader import Downloader
+from data_ingestion.processor import DataProcessor
+from data_ingestion.database import Database
+from data_ingestion.importer import CsvImporter
 
 if __name__ == '__main__':
     # Load configuration from YAML file
