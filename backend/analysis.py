@@ -99,3 +99,22 @@ class Analysis:
         if weather_data and weather_data.get('TMK') is not None:
             return weather_data['TMK']
         return None
+
+    def get_monthly_aggregation(self, station_id: int, year: int, month: int):
+        """
+        Get the monthly aggregated temperature for a specific station.
+
+        :param station_id: The ID of the station.
+        :param year: The year.
+        :param month: The month.
+        :return: The average monthly temperature.
+        """
+        monthly_data = self.db.get_monthly_weather_data(station_id, year, month)
+        if not monthly_data:
+            return None
+
+        temperatures = [data['TMK'] for data in monthly_data if data.get('TMK') is not None]
+        if not temperatures:
+            return None
+
+        return sum(temperatures) / len(temperatures)

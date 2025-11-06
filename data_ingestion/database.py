@@ -69,6 +69,24 @@ class Database:
             return dict(zip(columns, row))
         return None
 
+    def get_monthly_weather_data(self, station_id: int, year: int, month: int):
+        """
+        Query weather data for a specific station, year, and month.
+
+        :param station_id: The ID of the station.
+        :param year: The year.
+        :param month: The month.
+        :return: A list of dictionaries containing the weather data.
+        """
+        cur = self.conn.cursor()
+        date_pattern = f'{year}{month:02d}%'
+        cur.execute("SELECT * FROM Measurement WHERE Station_ID = ? AND MESS_DATUM LIKE ?", (station_id, date_pattern))
+        rows = cur.fetchall()
+        if rows:
+            columns = [description[0] for description in cur.description]
+            return [dict(zip(columns, row)) for row in rows]
+        return []
+
     def insert_csv(self, csv_filepath, delimiter):
         """
         Reads data from a given CSV file path and inserts it into the
