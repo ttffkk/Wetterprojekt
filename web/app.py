@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yaml
 import click
-from flask import Flask
+from flask import Flask, render_template
 from data_ingestion.downloader import Downloader
 from data_ingestion.processor import DataProcessor
 from data_ingestion.database import Database
@@ -14,7 +14,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return "Hello, World!"
+    return render_template('index.html')
 
 @app.cli.command("import-data")
 def import_data_command():
