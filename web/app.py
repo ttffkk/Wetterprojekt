@@ -3,12 +3,27 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yaml
+import click
+from flask import Flask
 from data_ingestion.downloader import Downloader
 from data_ingestion.processor import DataProcessor
 from data_ingestion.database import Database
 from data_ingestion.importer import CsvImporter
 
-if __name__ == '__main__':
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return "Hello, World!"
+
+@app.cli.command("import-data")
+def import_data_command():
+    """Command to import the weather data."""
+    import_data()
+    click.echo("Data import finished.")
+
+def import_data():
+    """Function to import the weather data."""
     # Load configuration from YAML file
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -46,4 +61,5 @@ if __name__ == '__main__':
 
     db.close_connection()
 
-
+if __name__ == '__main__':
+    app.run(debug=True)
