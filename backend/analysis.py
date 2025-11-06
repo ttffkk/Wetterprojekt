@@ -86,3 +86,16 @@ class Analysis:
             return None
 
         return weighted_sum / total_weight
+
+    def get_daily_mean_temperature(self, station_id: int, date: str):
+        """
+        Get the daily mean temperature for a specific station and date.
+
+        :param station_id: The ID of the station.
+        :param date: The date in 'YYYY-MM-DD' format.
+        :return: The daily mean temperature.
+        """
+        weather_data = self.db.get_weather_data(station_id, date)
+        if weather_data and weather_data.get('TMK') is not None:
+            return weather_data['TMK']
+        return None

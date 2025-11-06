@@ -84,6 +84,29 @@ class TestAnalysis(unittest.TestCase):
         # interpolated_temp = 2.5 / 0.15 = 16.666...
         self.assertAlmostEqual(interpolated_temp, 16.666, delta=0.001)
 
+    def test_get_daily_mean_temperature(self):
+        """Test the get_daily_mean_temperature method."""
+        # Mock the get_weather_data method
+        self.mock_db.get_weather_data = MagicMock(return_value={'TMK': 25.0})
+
+        # Call the method
+        mean_temp = self.analysis.get_daily_mean_temperature(1, '2025-11-06')
+
+        # Assertion
+        self.assertEqual(mean_temp, 25.0)
+
+    def test_get_daily_mean_temperature_no_data(self):
+        """Test the get_daily_mean_temperature method when no data is available."""
+        # Mock the get_weather_data method
+        self.mock_db.get_weather_data = MagicMock(return_value=None)
+
+        # Call the method
+        mean_temp = self.analysis.get_daily_mean_temperature(1, '2025-11-06')
+
+        # Assertion
+        self.assertIsNone(mean_temp)
+
+
 
 
 if __name__ == '__main__':
