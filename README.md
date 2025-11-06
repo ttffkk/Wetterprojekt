@@ -8,7 +8,9 @@ A Python-based web application for analyzing historical weather data from the Ge
 *   **Database Storage**: Stores weather data in a local SQLite database for efficient access.
 *   **Flexible Analysis**: Allows for analysis of weather data based on custom time periods and locations.
 *   **Geospatial Analysis**: Interpolates weather data for any address in Germany, even if there is no direct weather station.
+*   **Data Aggregation**: Calculates daily mean temperature and aggregates data by month and year.
 *   **Data Visualization**: Presents results in both tabular and graphical formats.
+*   **RESTful API**: Provides a RESTful API for accessing weather data (under development).
 
 ## Getting Started
 
@@ -38,38 +40,57 @@ A Python-based web application for analyzing historical weather data from the Ge
         ```
 
 3.  **Install the required packages:**
+
+    This will install Flask, Pandas, and other necessary packages.
     ```sh
     pip install -r requirements.txt
     ```
 
 ## Usage
 
-To run the data import process, execute the main application file:
+### Data Import
+
+To run the data import process, execute the following command:
 
 ```sh
-python app.py
+flask import-data
 ```
 
 This will download the latest data, process it, and store it in the SQLite database located in the `data/` directory.
 
-*(Note: The web interface for this application is still under development.)*
+### Web Application
+
+To run the web application, execute the following command:
+
+```sh
+flask run
+```
+
+This will start a local development server. You can access the application by navigating to `http://127.0.0.1:5000` in your web browser.
 
 ## Project Structure
 
 ```
 .
-├── app.py                  # Main application entry point
-├── config.yaml             # Application configuration
-├── Create_table.sql        # SQL schema for the database
-├── requirements.txt        # Python dependencies
-├── wetter/                 # Module for downloading and processing data
-│   ├── downloader.py
-│   └── processor.py
-├── database/               # Module for database interactions
+├── .gitignore
+├── config.yaml
+├── Create_table.sql
+├── README.md
+├── requirements.txt
+├── backend/
+│   └── analysis.py
+├── data/
+├── data_ingestion/
 │   ├── database.py
-│   └── importer.py
-├── tests/                  # Unit and integration tests
-└── data/                   # Directory for data files and the database
+│   ├── downloader.py
+│   ├── importer.py
+│   └── processor.py
+├── tests/
+│   ├── test_analysis.py
+│   ├── test_downloader.py
+│   └── test_processor.py
+└── web/
+    └── app.py
 ```
 
 ## Configuration
