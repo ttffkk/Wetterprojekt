@@ -1,15 +1,18 @@
 source:
   url: "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/historical/"
-  zip_pattern: 'href="(tageswerte_KL_.*?\.zip)"'
-  product_pattern_to_extract: 'produkt_'
-  data_file_glob: "produkt_*.txt"
-  header_keyword: 'STATIONS_ID'
-  delimiter: ';'
-  file_encoding: 'latin-1'
-  na_value: -999
-  download_dir: "data"
-  extract_dir: "data/unzipped"
-  zip_glob: "*.zip"
+  patterns:
+    zip_pattern: 'href="(tageswerte_KL_.*?\.zip)"'
+    product_pattern_to_extract: 'produkt_'
+    header_keyword: 'STATIONS_ID'
+    zip_glob: "*.zip"
+    data_file_glob: "produkt_*.txt"
+  file_properties:
+    delimiter: ';'
+    file_encoding: 'latin-1'
+    na_value: -999
+  paths:
+    download_dir: "data"
+    extract_dir: "data/unzipped"
 
 database:
   path: "data/wetter.db"
