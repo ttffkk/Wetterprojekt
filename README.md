@@ -62,7 +62,6 @@ This will download the latest data, process it, and store it in the SQLite datab
 ├── config.yaml             # Application configuration
 ├── Create_table.sql        # SQL schema for the database
 ├── requirements.txt        # Python dependencies
-├── tasks.md                # Project tasks and progress
 ├── wetter/                 # Module for downloading and processing data
 │   ├── downloader.py
 │   └── processor.py

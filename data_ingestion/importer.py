@@ -1,5 +1,5 @@
 import os
-from database import Database
+from .database import Database
 
 class CsvImporter:
     def __init__(self, db: Database):

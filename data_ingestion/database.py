@@ -30,9 +30,12 @@ class Database:
     def create_tables(self, sql_file_path):
         """ create tables from a .sql file """
         try:
+            print(f"Attempting to read SQL file from {sql_file_path}...")
             with open(sql_file_path, 'r') as sql_file:
                 sql_script = sql_file.read()
+            print("SQL file read successfully.")
             c = self.conn.cursor()
+            print("Executing SQL script...")
             c.executescript(sql_script)
             self.conn.commit()
             print("Tables created successfully.")
@@ -79,7 +82,7 @@ class Database:
                         if not row: continue # Skip empty rows
                         
                         # Remove 'eor' value from row if exists
-                        if eor_.index != -1:
+                        if eor_index != -1:
                             del row[eor_index]
 
                         # Clean row and handle configured na_value values
