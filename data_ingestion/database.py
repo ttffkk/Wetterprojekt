@@ -44,6 +44,13 @@ class Database:
         except FileNotFoundError:
             print(f"Error: SQL file not found at {sql_file_path}")
 
+    def get_all_stations(self):
+        """Query all rows in the Station table"""
+        cur = self.conn.cursor()
+        cur.execute("SELECT Station_ID, geoBreite, geoLaenge, Stationsname FROM Station")
+        rows = cur.fetchall()
+        return rows
+
     def insert_csv(self, csv_filepath, delimiter):
         """
         Reads data from a given CSV file path and inserts it into the
