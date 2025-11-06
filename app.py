@@ -12,7 +12,7 @@ from data_ingestion.processor import DataProcessor
 from data_ingestion.database import Database
 from data_ingestion.importer import CsvImporter
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='web/templates')
 swagger = Swagger(app)
 
 app.register_blueprint(web_blueprint) # Register the blueprint
