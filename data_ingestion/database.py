@@ -3,9 +3,11 @@ import os
 import csv
 
 class Database:
-    def __init__(self, db_file):
+    def __init__(self, db_file, na_value, file_encoding):
         self.db_file = db_file
         self.conn = None
+        self.na_value = na_value
+        self.file_encoding = file_encoding
 
     def create_connection(self):
         """ create a database connection to the SQLite database
@@ -25,59 +27,39 @@ class Database:
         if self.conn:
             self.conn.close()
 
-    def create_tables(self):
-        
-        """ create tables from the create_table_sql statement """
-        sql_create_station_table = """ CREATE TABLE IF NOT EXISTS Station (
-                                            Station_ID INT PRIMARY KEY,
-                                            von_datum DATE,
-                                            bis_datum DATE,
-                                            Stattionhoehe INTEGER,
-                                            geoBreite REAL,
-                                            geoLaenge REAL,
-                                            Stationsname TEXT,
-                                            Bundesland TEXT,
-                                            Abgabe TEXT
-                                        ); """
-
-        sql_create_measurement_table = """CREATE TABLE IF NOT EXISTS Measurement (
-                                        m_ID INTEGER PRIMARY KEY,
-                                        Station_ID INTEGER,
-                                        MESS_DATUM DATE,
-                                        QN_3 INTEGER,
-                                        FX REAL,
-                                        FM REAL,
-                                        QN_4 INTEGER,
-                                        RSK REAL,
-                                        RSKF INTEGER,
-                                        SDK REAL,
-                                        SHK_TAG REAL,
-                                        NM REAL,
-                                        VPM REAL,
-                                        PM REAL,
-                                        TMK REAL,
-                                        UPM REAL,
-                                        TXK REAL,
-                                        TNK REAL,
-                                        TGK REAL,
-                                        FOREIGN KEY (Station_ID) REFERENCES Station(Station_ID)
-                                    );"""
+    def create_tables(self, sql_file_path):
+        """ create tables from a .sql file """
         try:
+            print(f"Attempting to read SQL file from {sql_file_path}...")
+            with open(sql_file_path, 'r') as sql_file:
+                sql_script = sql_file.read()
+            print("SQL file read successfully.")
             c = self.conn.cursor()
-            c.execute(sql_create_station_table)
-            c.execute(sql_create_measurement_table)
+            print("Executing SQL script...")
+            c.executescript(sql_script)
+            self.conn.commit()
+            print("Tables created successfully.")
         except sqlite3.Error as e:
-            print(e)
+            print(f"Database error: {e}")
+        except FileNotFoundError:
+            print(f"Error: SQL file not found at {sql_file_path}")
 
-    def insert_csv(self, csv_filepath):
+    def get_all_stations(self):
+        """Query all rows in the Station table"""
+        cur = self.conn.cursor()
+        cur.execute("SELECT Station_ID, geoBreite, geoLaenge, Stationsname FROM Station")
+        rows = cur.fetchall()
+        return rows
+
+    def insert_csv(self, csv_filepath, delimiter):
         """
         Reads data from a given CSV file path and inserts it into the
         'Station' or 'Measurement' table. It determines the target table by
         inspecting the CSV header.
         """
         try:
-            with open(csv_filepath, 'r', encoding='utf-8') as f:
-                reader = csv.reader(f, delimiter=';')
+            with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
+                reader = csv.reader(f, delimiter=delimiter)
                 header = [h.strip() for h in next(reader)]
 
             # Determine table based on headers
@@ -98,8 +80,8 @@ class Database:
                 placeholders = ', '.join(['?'] * len(db_header))
                 sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
 
-                with open(csv_filepath, 'r', encoding='utf-8') as f:
-                    reader = csv.reader(f, delimiter=';')
+                with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
+                    reader = csv.reader(f, delimiter=delimiter)
                     next(reader)  # Skip header
 
                     c = self.conn.cursor()
@@ -110,11 +92,11 @@ class Database:
                         if eor_index != -1:
                             del row[eor_index]
 
-                        # Clean row and handle -999 values
+                        # Clean row and handle configured na_value values
                         cleaned_row = []
                         for field in row:
                             cleaned_field = field.strip()
-                            if cleaned_field == '-999' or cleaned_field == '':
+                            if cleaned_field == str(self.na_value) or cleaned_field == '':
                                 cleaned_row.append(None)
                             else:
                                 cleaned_row.append(cleaned_field)
@@ -130,8 +112,8 @@ class Database:
                 # Existing logic for station files
                 table_name = 'Station'
                 sql = f"INSERT INTO Station ({', '.join(header)}) VALUES ({', '.join(['?'] * len(header))})"
-                with open(csv_filepath, 'r', encoding='utf-8') as f:
-                    reader = csv.reader(f, delimiter=';')
+                with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
+                    reader = csv.reader(f, delimiter=delimiter)
                     next(reader)  # Skip header
                     c = self.conn.cursor()
                     for row in reader:

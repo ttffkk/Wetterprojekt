@@ -7,7 +7,7 @@ import sys
 # Add the project root to the Python path to allow importing 'wetter'
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from wetter.downloader import Downloader
+from data_ingestion.downloader import Downloader
 
 class TestDownloader(unittest.TestCase):
 
@@ -58,7 +58,8 @@ class TestDownloader(unittest.TestCase):
 
         test_urls = [self.test_url + "dummy_file.zip"]
         
-        self.downloader.download_files(test_urls)
+        for url in test_urls:
+            self.downloader.download_file(url)
 
         expected_file_path = os.path.join(self.test_dir, "dummy_file.zip")
         self.assertTrue(os.path.exists(expected_file_path))

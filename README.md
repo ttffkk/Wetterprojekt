@@ -1,143 +1,100 @@
-# DWD Wetteranalyse-Anwendung - Entwicklungsanforderungen
+# DWD Weather Analysis Application
 
-## Projektübersicht
-Entwicklung einer Python-basierten webbasierten Anwendung zur Auswertung historischer Wetterdaten des Deutschen Wetterdienstes (DWD) mit SQLite-Datenbank, automatisiertem Datenimport und flexiblen Analysemöglichkeiten.
+A Python-based web application for analyzing historical weather data from the German Weather Service (DWD).
 
-## Funktionale Anforderungen
+## Features
 
-### 1. Datenimport und -verwaltung
-- **Automatischer Download**: Integration mit dem DWD-Archiv zum direkten Download historischer Tagesdaten
-- **Datenformate**: Verarbeitung der Standard-DWD-Datenformate (CSV, Text)
-- **Datenbankintegration**: Automatische Speicherung importierter Daten in strukturierter Datenbank
-- **Datenvalidierung**: Überprüfung auf Vollständigkeit und Plausibilität der importierten Daten
-- **Duplikatserkennung**: Vermeidung mehrfacher Speicherung identischer Datensätze
+*   **Automated Data Import**: Downloads and processes historical weather data directly from the DWD archive.
+*   **Database Storage**: Stores weather data in a local SQLite database for efficient access.
+*   **Flexible Analysis**: Allows for analysis of weather data based on custom time periods and locations.
+*   **Geospatial Analysis**: Interpolates weather data for any address in Germany, even if there is no direct weather station.
+*   **Data Visualization**: Presents results in both tabular and graphical formats.
 
-### 2. Geografische Funktionalitäten
-- **Stationsauswahl**: Direkte Auswahl spezifischer DWD-Wetterstationen
-- **Adressbasierte Suche**: Eingabe beliebiger deutscher Adressen
-- **Interpolation**: Berechnung von Wetterdaten für Orte ohne direkte Wetterstation durch gewichtete Mittelwertbildung benachbarter Stationen
-- **Umkreissuche**: Automatische Identifikation relevanter Wetterstationen im Umkreis einer Adresse
+## Getting Started
 
-### 3. Zeitraum-Analyse
-- **Flexible Zeiträume**: Definition von Start- und Enddatum ("Von ... bis ...")
-- **Multiple Aggregationsebenen**:
-  - Tagesbasis: Einzelne Tagesdaten
-  - Monatsbasis: Monatliche Zusammenfassungen
-  - Jahresbasis: Jährliche Statistiken
-- **Historische Reichweite**: Zugriff auf vollständiges DWD-Archiv
+### Prerequisites
 
-### 4. Datenauswertung und Statistiken
-- **Standardparameter**: Temperatur, Niederschlag, Luftfeuchtigkeit, Windgeschwindigkeit, Luftdruck
-- **Statistische Kennwerte**: Mittelwert, Minimum, Maximum, Standardabweichung
-- **Trends**: Lineare Trendanalyse über ausgewählte Zeiträume
-- **Vergleichsmöglichkeiten**: Vergleich verschiedener Zeiträume oder Standorte
+*   Python 3.x
+*   pip
 
-### 5. Ergebnisdarstellung
-- **Tabellarische Ausgabe**: 
-  - Sortier- und filterfähige Datentabellen
-  - Export-Funktionen (CSV, Excel, PDF)
-- **Grafische Visualisierung**:
-  - Zeitreihen-Diagramme (Liniendiagramme)
-  - Säulen-/Balkendiagramme für Vergleiche
-  - Temperatur-Niederschlags-Kombinationsdiagramme
-  - Interaktive Zoom- und Pan-Funktionen
+### Installation
 
-## Technische Anforderungen
+1.  **Clone the repository:**
+    ```sh
+    git clone https://github.com/ttffkk/Wetterprojekt.git
+    cd <repository-directory>
+    ```
 
-### 1. Python-Architektur
-- **Backend-Framework**: Flask oder FastAPI für Web-API-Entwicklung
-- **Frontend-Integration**: Jinja2-Templates oder statische HTML/JavaScript-Files
-- **Python-Bibliotheken**: 
-  - `pandas` für Datenmanipulation und -analyse
-  - `requests` für HTTP-Requests zum DWD-Archiv
-  - `sqlite3` oder `SQLAlchemy` für Datenbankoperationen
-  - `matplotlib`/`plotly` für Diagrammerstellung
-  - `geopy` für Geocoding und Distanzberechnungen
-- **Modulstruktur**: Klare Trennung in Module für Datenimport, Analyse, Visualisierung und Web-Interface
-- **Virtual Environment**: Isolierte Python-Umgebung mit requirements.txt
+2.  **Create and activate a virtual environment:**
+    *   On Windows:
+        ```sh
+        python -m venv .venv
+        .venv\Scripts\activate
+        ```
+    *   On macOS and Linux:
+        ```sh
+        python -m venv .venv
+        source .venv/bin/activate
+        ```
 
-### 2. Datenbank
-- **SQLite-Integration**: Verwendung von SQLite als Datenbanksystem für einfache Deployment und Wartung
-- **Python-SQLite-Anbindung**: Nutzung des sqlite3-Moduls oder SQLAlchemy für Datenbankoperationen
-- **Relationale Struktur**: Effiziente Speicherung zeitbasierter Wetterdaten in normalisierten Tabellen
-- **Indexierung**: Optimierte Abfrageperformance für große Datenmengen über Zeitraum- und Locations-Indices
-- **Skalierbarkeit**: SQLite-Datei bis mehrere GB für historische Datenarchive
-- **Portabilität**: Einfache Backup- und Transfer-Möglichkeiten durch einzelne Datenbankdatei
+3.  **Install the required packages:**
+    ```sh
+    pip install -r requirements.txt
+    ```
 
-### 3. Performance
-- **Ladezeiten**: Optimierte Antwortzeiten für Standardabfragen
-- **Concurrent Users**: Unterstützung für gleichzeitige Benutzer
-- **Datenvolumen**: Effiziente Verarbeitung mehrjähriger Datensätze
+## Usage
 
-## Qualitätsanforderungen
+To run the data import process, execute the main application file:
 
-### 1. Benutzerfreundlichkeit
-- **Intuitive Navigation**: Selbsterklärende Benutzeroberfläche
-- **Hilfe-System**: Kontextsensitive Hilfe und Dokumentation
-- **Fehlerbehandlung**: Verständliche Fehlermeldungen und Recovery-Mechanismen
+```sh
+python app.py
+```
 
-### 2. Zuverlässigkeit
-- **Datenintegrität**: Hohe Genauigkeit bei Datenimport und -verarbeitung
-- **Verfügbarkeit**: Stabile Anwendungsperformance
-- **Fehlertoleranz**: Graceful Degradation bei Teilausfällen
+This will download the latest data, process it, and store it in the SQLite database located in the `data/` directory.
 
-### 3. Sicherheit
-- **Datenschutz**: DSGVO-konforme Datenverarbeitung
-- **Zugriffskontrolle**: Benutzerauthentifizierung und -autorisierung
-- **Datensicherheit**: Verschlüsselte Datenübertragung (HTTPS)
+*(Note: The web interface for this application is still under development.)*
 
-## Schnittstellen
+## Project Structure
 
-### 1. Externe Services
-- **DWD Climate Data Center**: Automatisierter Zugriff auf historische Daten
-- **Geocoding-Services**: Adressauflösung zu Koordinaten
-- **Kartendienste**: Optional für geografische Visualisierung
+```
+.
+├── app.py                  # Main application entry point
+├── config.yaml             # Application configuration
+├── Create_table.sql        # SQL schema for the database
+├── requirements.txt        # Python dependencies
+├── wetter/                 # Module for downloading and processing data
+│   ├── downloader.py
+│   └── processor.py
+├── database/               # Module for database interactions
+│   ├── database.py
+│   └── importer.py
+├── tests/                  # Unit and integration tests
+└── data/                   # Directory for data files and the database
+```
 
-### 2. Export-Schnittstellen
-- **Datenexport**: CSV, Excel, JSON-Formate
-- **Grafik-Export**: PNG, SVG, PDF-Formate
-- **API-Endpunkte**: REST-API für Drittanwendungen
+## Configuration
 
-## Entwicklungsphasen
+The application is configured via the `config.yaml` file. Here is a description of the variables:
 
-### Phase 1: Backend-Grundstruktur
-- Python-Projektsetup mit Virtual Environment
-- SQLite-Datenbankschema-Design und -Implementation
-- Grundlegende Modultrennung (data_import, database, analysis, web_interface)
+### `source`
 
-### Phase 2: Datenimport-Modul
-- HTTP-Client für DWD-Archiv-Downloads
-- Parser für DWD-Datenformate
-- Automatisierte SQLite-Integration mit Duplikatserkennung
-- Batch-Import-Funktionalitäten
+| Variable                     | Description                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `url`                        | Base URL for downloading historical weather data from the DWD.              |
+| `zip_pattern`                | Regex pattern to find zip file names on the DWD server listing.             |
+| `product_pattern_to_extract` | Keyword to identify the actual product file within a zip archive.           |
+| `data_file_glob`             | Glob pattern for data files after extraction (e.g., "produkt_*.txt").       |
+| `header_keyword`             | Keyword to find the header line in the raw data files.                      |
+| `delimiter`                  | Delimiter used in the raw data files (e.g., ';', ',').                      |
+| `file_encoding`              | Encoding of the raw data files.                                             |
+| `na_value`                   | Value representing 'Not Available' or missing data in the raw files.        |
+| `download_dir`               | Directory where raw zip files are downloaded.                               |
+| `extract_dir`                | Directory where data files are extracted from zip archives.                 |
+| `zip_glob`                   | Glob pattern to find zip files in the download directory.                   |
 
-### Phase 3: Analyse-Engine
-- Geografische Interpolationsalgorithmen mit geopy
-- Zeitreihen-Analysefunktionen mit pandas
-- Statistische Auswertungsmodule
-- Aggregationsfunktionen (Tag/Monat/Jahr)
+### `database`
 
-### Phase 4: Web-Interface
-- Flask/FastAPI-Anwendung mit RESTful-Endpunkten
-- HTML-Templates und JavaScript für Frontend
-- Diagrammerstellung mit matplotlib/plotly
-- Export-Funktionalitäten
-
-### Phase 5: Integration und Testing
-- Unit-Tests für alle Python-Module
-- Integrationstests mit Beispieldaten
-- Performance-Optimierung der SQLite-Abfragen
-- Error-Handling und Logging-Implementation
-
-### Phase 6: Deployment und Dokumentation
-- Produktions-Setup und Konfiguration
-- Code-Dokumentation und Benutzerhandbuch
-- Benutzerschulung für die Python-Anwendung
-- Projektübergabe mit kompletter Codebasis
-
-## Erfolgskriterien
-- Vollautomatischer Import historischer DWD-Daten in SQLite-Datenbank
-- Erfolgreiche Interpolation für beliebige deutsche Adressen mit Python-Algorithmen
-- Performante SQLite-basierte Auswertung mehrjähriger Datensätze
-- Stabile Python-Webanwendung mit hoher Verfügbarkeit
-- Vollständige Codedokumentation und requirements.txt für einfache Installation
+| Variable        | Description                                           |
+| --------------- | ----------------------------------------------------- |
+| `path`          | Path to the SQLite database file.                     |
+| `sql_file_path` | Path to the SQL script for creating database tables. |
