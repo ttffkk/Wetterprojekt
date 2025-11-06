@@ -2,7 +2,6 @@ import os
 import zipfile
 import glob
 import pandas as pd
-from geopy.distance import geodesic
 
 class DataProcessor:
     """Handles unzipping, filtering, and parsing of data files."""
@@ -78,8 +77,3 @@ class DataProcessor:
                 if header_keyword in line:
                     return i
         return None
-
-    @staticmethod
-    def calculate_distance(coord1, coord2):
-        """Calculates the distance between two coordinates in kilometers."""
-        return geodesic(coord1, coord2).kilometers

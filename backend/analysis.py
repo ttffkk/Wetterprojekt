@@ -7,6 +7,11 @@ class Analysis:
         self.db = db
         self.geolocator = Nominatim(user_agent="wetterprojekt")
 
+    @staticmethod
+    def calculate_distance(coord1, coord2):
+        """Calculates the distance between two coordinates in kilometers."""
+        return geodesic(coord1, coord2).kilometers
+
     def find_nearest_stations(self, address: str, num_stations: int = 5):
         """
         Find the nearest weather stations to a given address.
@@ -33,7 +38,7 @@ class Analysis:
             if lat is None or lon is None:
                 continue
             station_coords = (lat, lon)
-            distance = geodesic(target_coords, station_coords).kilometers
+            distance = self.calculate_distance(target_coords, station_coords)
             stations_with_distance.append((station_id, name, distance))
 
         # Sort stations by distance

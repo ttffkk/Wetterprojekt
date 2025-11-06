@@ -15,6 +15,20 @@ class TestAnalysis(unittest.TestCase):
         self.mock_db = MagicMock(spec=Database)
         self.analysis = Analysis(self.mock_db)
 
+    def test_calculate_distance(self):
+        """Test the calculate_distance method."""
+        # Coordinates for Berlin and Munich
+        berlin_coords = (52.52, 13.40)
+        munich_coords = (48.13, 11.57)
+
+        # Test distance between two different points
+        distance = self.analysis.calculate_distance(berlin_coords, munich_coords)
+        self.assertAlmostEqual(distance, 504, delta=5)  # Allow a 5km tolerance
+
+        # Test distance between the same point (should be 0)
+        distance_same = self.analysis.calculate_distance(berlin_coords, berlin_coords)
+        self.assertEqual(distance_same, 0)
+
     @patch('geopy.geocoders.Nominatim')
     def test_find_nearest_stations(self, MockNominatim):
         """Test the find_nearest_stations method."""
