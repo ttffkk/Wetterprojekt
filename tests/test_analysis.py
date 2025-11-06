@@ -132,19 +132,49 @@ class TestAnalysis(unittest.TestCase):
         # Assertion
         self.assertIsNone(avg_temp)
 
-    def test_get_monthly_aggregation_no_temp_data(self):
-        """Test the get_monthly_aggregation method when no temperature data is available."""
-        # Mock the get_monthly_weather_data method
-        self.mock_db.get_monthly_weather_data = MagicMock(return_value=[
+        self.assertIsNone(avg_temp)
+
+    def test_get_yearly_aggregation(self):
+        """Test the get_yearly_aggregation method."""
+        # Mock the get_yearly_weather_data method
+        self.mock_db.get_yearly_weather_data = MagicMock(return_value=[
+            {'TMK': 10.0},
+            {'TMK': 15.0},
+            {'TMK': 20.0}
+        ])
+
+        # Call the method
+        avg_temp = self.analysis.get_yearly_aggregation(1, 2025)
+
+        # Assertion
+        self.assertEqual(avg_temp, 15.0)
+
+    def test_get_yearly_aggregation_no_data(self):
+        """Test the get_yearly_aggregation method when no data is available."""
+        # Mock the get_yearly_weather_data method
+        self.mock_db.get_yearly_weather_data = MagicMock(return_value=[])
+
+        # Call the method
+        avg_temp = self.analysis.get_yearly_aggregation(1, 2025)
+
+        # Assertion
+        self.assertIsNone(avg_temp)
+
+    def test_get_yearly_aggregation_no_temp_data(self):
+        """Test the get_yearly_aggregation method when no temperature data is available."""
+        # Mock the get_yearly_weather_data method
+        self.mock_db.get_yearly_weather_data = MagicMock(return_value=[
             {'TMK': None},
             {'TMK': None}
         ])
 
         # Call the method
-        avg_temp = self.analysis.get_monthly_aggregation(1, 2025, 11)
+        avg_temp = self.analysis.get_yearly_aggregation(1, 2025)
 
         # Assertion
         self.assertIsNone(avg_temp)
+
+
 
 
 

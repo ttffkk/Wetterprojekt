@@ -118,3 +118,21 @@ class Analysis:
             return None
 
         return sum(temperatures) / len(temperatures)
+
+    def get_yearly_aggregation(self, station_id: int, year: int):
+        """
+        Get the yearly aggregated temperature for a specific station.
+
+        :param station_id: The ID of the station.
+        :param year: The year.
+        :return: The average yearly temperature.
+        """
+        yearly_data = self.db.get_yearly_weather_data(station_id, year)
+        if not yearly_data:
+            return None
+
+        temperatures = [data['TMK'] for data in yearly_data if data.get('TMK') is not None]
+        if not temperatures:
+            return None
+
+        return sum(temperatures) / len(temperatures)
