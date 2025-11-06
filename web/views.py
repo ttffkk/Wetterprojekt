@@ -2,6 +2,10 @@ import yaml
 from flask import Blueprint, render_template, request, jsonify
 from backend.analysis import Analysis
 from data_ingestion.database import Database
+import matplotlib.pyplot as plt
+import io
+import base64
+from datetime import datetime, timedelta
 
 web_blueprint = Blueprint('web', __name__)
 
@@ -72,3 +76,100 @@ def get_weather():
         return jsonify({'error': 'Could not retrieve weather data.'}), 400
 
     return jsonify({'temperature': temperature})
+
+@web_blueprint.route('/plot_temperature', methods=['POST'])
+def plot_temperature():
+    """
+    Generate a temperature plot for a specific location and date range.
+    ---
+    parameters:
+      - name: location
+        in: formData
+        type: string
+        required: true
+        description: The address in Germany to get weather data for.
+      - name: start_date
+        in: formData
+        type: string
+        format: date
+        required: true
+        description: The start date for the plot.
+      - name: end_date
+        in: formData
+        type: string
+        format: date
+        required: true
+        description: The end date for the plot.
+    responses:
+      200:
+        description: A base64 encoded PNG image of the temperature plot.
+        schema:
+          type: string
+          format: byte
+      400:
+        description: Invalid input or no data available.
+    """
+    location = request.form.get('location')
+    start_date_str = request.form.get('start_date')
+    end_date_str = request.form.get('end_date')
+
+    if not location or not start_date_str or not end_date_str:
+        return jsonify({'error': 'Invalid input'}), 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+
+    if start_date > end_date:
+        return jsonify({'error': 'Start date cannot be after end date.'}), 400
+
+    # Load configuration from YAML file
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+
+    db_config = config['database']
+    source_config = config['source']
+    file_properties_config = source_config['file_properties']
+
+    # Initialize database and analysis
+    db = Database(db_config['path'], file_properties_config['na_value'], file_properties_config['file_encoding'])
+    db.create_connection()
+    analysis = Analysis(db)
+
+    dates = []
+    temperatures = []
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = current_date.strftime('%Y-%m-%d')
+        temp = analysis.interpolate_weather_data(location, date_str)
+        if temp is not None:
+            dates.append(current_date)
+            temperatures.append(temp)
+        current_date += timedelta(days=1)
+
+    db.close_connection()
+
+    if not dates:
+        return jsonify({'error': 'No weather data available for the specified period.'}), 400
+
+    # Generate plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(dates, temperatures, marker='o', linestyle='-')
+    plt.xlabel('Date')
+    plt.ylabel('Temperature (°C)')
+    plt.title(f'Temperature for {location} ({start_date_str} to {end_date_str})')
+    plt.grid(True)
+    plt.tight_layout()
+
+    # Save plot to a BytesIO object
+    buffer = io.BytesIO()
+    plt.savefig(buffer, format='png')
+    buffer.seek(0)
+    plt.close() # Close the plot to free up memory
+
+    # Encode image to base64
+    plot_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
+
+    return jsonify({'plot': plot_base64})
