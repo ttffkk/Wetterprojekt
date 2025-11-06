@@ -9,7 +9,7 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">DWD Weather Analysis</h1>
-        <form action="/weather" method="post">
+        <form id="weather-form" class="mb-4">
             <div class="mb-3">
                 <label for="location" class="form-label">Location (Address in Germany)</label>
                 <input type="text" class="form-control" id="location" name="location" required>
@@ -20,6 +20,64 @@
             </div>
             <button type="submit" class="btn btn-primary">Get Weather</button>
         </form>
+
+        <div id="loading-spinner" class="text-center d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Fetching weather data...</p>
+        </div>
+
+        <div id="weather-results" class="mt-4">
+            <!-- Weather data will be displayed here -->
+        </div>
     </div>
+
+    <script>
+        document.getElementById('weather-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const location = document.getElementById('location').value;
+            const date = document.getElementById('date').value;
+            const weatherResultsDiv = document.getElementById('weather-results');
+            const loadingSpinner = document.getElementById('loading-spinner');
+
+            weatherResultsDiv.innerHTML = ''; // Clear previous results
+            loadingSpinner.classList.remove('d-none'); // Show loading spinner
+
+            const formData = new FormData();
+            formData.append('location', location);
+            formData.append('date', date);
+
+            try {
+                const response = await fetch('/weather', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    weatherResultsDiv.innerHTML = `
+                        <div class="card">
+                            <div class="card-header">
+                                Weather Data for ${location} on ${date}
+                            </div>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item"><strong>Temperature:</strong> ${data.temperature.toFixed(2)} °C</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    weatherResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">${data.error || 'An error occurred.'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                weatherResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
+            } finally {
+                loadingSpinner.classList.add('d-none'); // Hide loading spinner
+            }
+        });
+    </script>
 </body>
 </html>
