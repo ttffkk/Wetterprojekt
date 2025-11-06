@@ -1,6 +1,7 @@
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 from data_ingestion.database import Database
+import pandas as pd
 
 class Analysis:
     def __init__(self, db: Database):
@@ -45,3 +46,43 @@ class Analysis:
         stations_with_distance.sort(key=lambda x: x[2])
 
         return stations_with_distance[:num_stations]
+
+    def interpolate_weather_data(self, address: str, date: str):
+        """
+        Interpolate weather data for a given address and date.
+
+        :param address: The address to interpolate data for.
+        :param date: The date for which to interpolate data ('YYYY-MM-DD').
+        :return: The interpolated temperature.
+        """
+        nearest_stations = self.find_nearest_stations(address)
+        if not nearest_stations:
+            return None
+
+        station_data = []
+        for station_id, name, distance in nearest_stations:
+            weather_data = self.db.get_weather_data(station_id, date)
+            if weather_data and weather_data.get('TMK') is not None:
+                station_data.append({
+                    'distance': distance,
+                    'temperature': weather_data['TMK']
+                })
+
+        if not station_data:
+            print("No weather data available for the nearest stations on the given date.")
+            return None
+
+        # Inverse Distance Weighting
+        total_weight = 0
+        weighted_sum = 0
+        for data in station_data:
+            if data['distance'] == 0: # If the location is at a station, return its temperature
+                return data['temperature']
+            weight = 1 / data['distance']
+            weighted_sum += weight * data['temperature']
+            total_weight += weight
+
+        if total_weight == 0:
+            return None
+
+        return weighted_sum / total_weight

@@ -56,6 +56,35 @@ class TestAnalysis(unittest.TestCase):
         self.assertEqual(nearest_stations[0][0], 1) # Closest is Berlin-Mitte
         self.assertEqual(nearest_stations[1][0], 2) # Second closest is Prenzlauer Berg
 
+    def test_interpolate_weather_data(self):
+        """Test the interpolate_weather_data method."""
+        # Mock the find_nearest_stations method
+        self.analysis.find_nearest_stations = MagicMock(return_value=[
+            (1, 'Station A', 10),
+            (2, 'Station B', 20)
+        ])
+
+        # Mock the get_weather_data method
+        def mock_get_weather_data(station_id, date):
+            if station_id == 1:
+                return {'TMK': 15.0}
+            if station_id == 2:
+                return {'TMK': 20.0}
+            return None
+        self.mock_db.get_weather_data = MagicMock(side_effect=mock_get_weather_data)
+
+        # Call the method
+        interpolated_temp = self.analysis.interpolate_weather_data('Some Address', '2025-11-06')
+
+        # Expected result:
+        # weight1 = 1/10 = 0.1
+        # weight2 = 1/20 = 0.05
+        # weighted_sum = 0.1 * 15.0 + 0.05 * 20.0 = 1.5 + 1.0 = 2.5
+        # total_weight = 0.1 + 0.05 = 0.15
+        # interpolated_temp = 2.5 / 0.15 = 16.666...
+        self.assertAlmostEqual(interpolated_temp, 16.666, delta=0.001)
+
+
 
 if __name__ == '__main__':
     unittest.main()

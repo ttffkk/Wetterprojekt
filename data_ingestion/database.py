@@ -51,6 +51,24 @@ class Database:
         rows = cur.fetchall()
         return rows
 
+    def get_weather_data(self, station_id: int, date: str):
+        """
+        Query weather data for a specific station and date.
+
+        :param station_id: The ID of the station.
+        :param date: The date in 'YYYY-MM-DD' format.
+        :return: A dictionary containing the weather data.
+        """
+        cur = self.conn.cursor()
+        date_formated = date.replace("-", "")
+        cur.execute("SELECT * FROM Measurement WHERE Station_ID = ? AND MESS_DATUM = ?", (station_id, date_formated))
+        row = cur.fetchone()
+        if row:
+            # get column names from cursor description
+            columns = [description[0] for description in cur.description]
+            return dict(zip(columns, row))
+        return None
+
     def insert_csv(self, csv_filepath, delimiter):
         """
         Reads data from a given CSV file path and inserts it into the
