@@ -1,10 +1,11 @@
 import yaml
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, Response
 from backend.analysis import Analysis
 from data_ingestion.database import Database
 import matplotlib.pyplot as plt
 import io
 import base64
+import csv
 from datetime import datetime, timedelta
 
 web_blueprint = Blueprint('web', __name__)
@@ -173,3 +174,85 @@ def plot_temperature():
     plot_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     return jsonify({'plot': plot_base64})
+
+@web_blueprint.route('/export_csv', methods=['POST'])
+def export_csv():
+    """
+    Export weather data to a CSV file.
+    ---
+    parameters:
+      - name: location
+        in: formData
+        type: string
+        required: true
+        description: The address in Germany to get weather data for.
+      - name: start_date
+        in: formData
+        type: string
+        format: date
+        required: true
+        description: The start date for the CSV export.
+      - name: end_date
+        in: formData
+        type: string
+        format: date
+        required: true
+        description: The end date for the CSV export.
+    responses:
+      200:
+        description: A CSV file with the weather data.
+        content:
+          text/csv:
+            schema:
+              type: string
+      400:
+        description: Invalid input or no data available.
+    """
+    location = request.form.get('location')
+    start_date_str = request.form.get('start_date')
+    end_date_str = request.form.get('end_date')
+
+    if not location or not start_date_str or not end_date_str:
+        return jsonify({'error': 'Invalid input'}), 400
+
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD.'}), 400
+
+    if start_date > end_date:
+        return jsonify({'error': 'Start date cannot be after end date.'}), 400
+
+    # Load configuration from YAML file
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+
+    db_config = config['database']
+    source_config = config['source']
+    file_properties_config = source_config['file_properties']
+
+    # Initialize database and analysis
+    db = Database(db_config['path'], file_properties_config['na_value'], file_properties_config['file_encoding'])
+    db.create_connection()
+    analysis = Analysis(db)
+
+    weather_data = analysis.get_weather_data_for_period(location, start_date_str, end_date_str)
+
+    db.close_connection()
+
+    if not weather_data or len(weather_data) <= 1:
+        return jsonify({'error': 'No weather data available for the specified period.'}), 400
+
+    # Create a string buffer for the CSV data
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerows(weather_data)
+
+    # Create a response with the CSV data
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-disposition":
+                 f"attachment; filename=weather_data_{location}_{start_date_str}_{end_date_str}.csv"}
+    )

@@ -63,6 +63,38 @@
         <div id="plot-results" class="mt-4">
             <!-- Plot will be displayed here -->
         </div>
+
+        <hr class="my-5">
+
+        <h2 class="mb-4">Export Data to CSV</h2>
+        <form id="csv-form" class="mb-4">
+            <div class="mb-3">
+                <label for="csv-location" class="form-label">Location (Address in Germany)</label>
+                <input type="text" class="form-control" id="csv-location" name="location" required>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="csv-start-date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="csv-start-date" name="start_date" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="csv-end-date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="csv-end-date" name="end_date" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Export CSV</button>
+        </form>
+
+        <div id="csv-loading-spinner" class="text-center d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Exporting data...</p>
+        </div>
+
+        <div id="csv-results" class="mt-4">
+            <!-- CSV export status will be displayed here -->
+        </div>
     </div>
 
     <script>
@@ -155,6 +187,52 @@
                 plotResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
             } finally {
                 plotLoadingSpinner.classList.add('d-none'); // Hide loading spinner
+            }
+        });
+
+        document.getElementById('csv-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const location = document.getElementById('csv-location').value;
+            const startDate = document.getElementById('csv-start-date').value;
+            const endDate = document.getElementById('csv-end-date').value;
+            const csvResultsDiv = document.getElementById('csv-results');
+            const csvLoadingSpinner = document.getElementById('csv-loading-spinner');
+
+            csvResultsDiv.innerHTML = ''; // Clear previous results
+            csvLoadingSpinner.classList.remove('d-none'); // Show loading spinner
+
+            const formData = new FormData();
+            formData.append('location', location);
+            formData.append('start_date', startDate);
+            formData.append('end_date', endDate);
+
+            try {
+                const response = await fetch('/export_csv', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `weather_data_${location}_${startDate}_${endDate}.csv`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                    csvResultsDiv.innerHTML = `<div class="alert alert-success" role="alert">CSV file downloaded successfully.</div>`;
+                } else {
+                    const data = await response.json();
+                    csvResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">${data.error || 'An error occurred.'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                csvResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
+            } finally {
+                csvLoadingSpinner.classList.add('d-none'); // Hide loading spinner
             }
         });
     </script>

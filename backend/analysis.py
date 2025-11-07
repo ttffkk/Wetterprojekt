@@ -2,6 +2,7 @@ from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 from data_ingestion.database import Database
 import pandas as pd
+from datetime import datetime, timedelta
 
 class Analysis:
     def __init__(self, db: Database):
@@ -131,8 +132,32 @@ class Analysis:
         if not yearly_data:
             return None
 
-        temperatures = [data['TMK'] for data in yearly_data if data.get('TMK') is not None]
         if not temperatures:
             return None
 
         return sum(temperatures) / len(temperatures)
+
+    def get_weather_data_for_period(self, address: str, start_date: str, end_date: str):
+        """
+        Get weather data for a given address and period.
+
+        :param address: The address to get data for.
+        :param start_date: The start date of the period ('YYYY-MM-DD').
+        :param end_date: The end date of the period ('YYYY-MM-DD').
+        :return: A list of lists with the weather data.
+        """
+        start = datetime.strptime(start_date, '%Y-%m-%d')
+        end = datetime.strptime(end_date, '%Y-%m-%d')
+
+        header = ['Date', 'Temperature']
+        data = [header]
+
+        current_date = start
+        while current_date <= end:
+            date_str = current_date.strftime('%Y-%m-%d')
+            temp = self.interpolate_weather_data(address, date_str)
+            if temp is not None:
+                data.append([date_str, temp])
+            current_date += timedelta(days=1)
+
+        return data
