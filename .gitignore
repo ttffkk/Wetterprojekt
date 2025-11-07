@@ -11,3 +11,6 @@ data/unzipped/
 __pycache__/
 *.pyc
 .venv/
+
+# Example files
+example/
