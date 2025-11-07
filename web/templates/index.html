@@ -31,6 +31,38 @@
         <div id="weather-results" class="mt-4">
             <!-- Weather data will be displayed here -->
         </div>
+
+        <hr class="my-5">
+
+        <h2 class="mb-4">Temperature Plot</h2>
+        <form id="plot-form" class="mb-4">
+            <div class="mb-3">
+                <label for="plot-location" class="form-label">Location (Address in Germany)</label>
+                <input type="text" class="form-control" id="plot-location" name="location" required>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="start-date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" id="start-date" name="start_date" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="end-date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" id="end-date" name="end_date" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Generate Plot</button>
+        </form>
+
+        <div id="plot-loading-spinner" class="text-center d-none">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Generating plot...</p>
+        </div>
+
+        <div id="plot-results" class="mt-4">
+            <!-- Plot will be displayed here -->
+        </div>
     </div>
 
     <script>
@@ -76,6 +108,53 @@
                 weatherResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
             } finally {
                 loadingSpinner.classList.add('d-none'); // Hide loading spinner
+            }
+        });
+
+        document.getElementById('plot-form').addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+
+            const location = document.getElementById('plot-location').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const plotResultsDiv = document.getElementById('plot-results');
+            const plotLoadingSpinner = document.getElementById('plot-loading-spinner');
+
+            plotResultsDiv.innerHTML = ''; // Clear previous results
+            plotLoadingSpinner.classList.remove('d-none'); // Show loading spinner
+
+            const formData = new FormData();
+            formData.append('location', location);
+            formData.append('start_date', startDate);
+            formData.append('end_date', endDate);
+
+            try {
+                const response = await fetch('/plot_temperature', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    plotResultsDiv.innerHTML = `
+                        <div class="card">
+                            <div class="card-header">
+                                Temperature Plot for ${location}
+                            </div>
+                            <div class="card-body text-center">
+                                <img src="data:image/png;base64,${data.plot}" class="img-fluid" alt="Temperature Plot">
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    plotResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">${data.error || 'An error occurred.'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                plotResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
+            } finally {
+                plotLoadingSpinner.classList.add('d-none'); // Hide loading spinner
             }
         });
     </script>
