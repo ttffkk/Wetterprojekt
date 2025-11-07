@@ -9,8 +9,8 @@ A Python-based web application for analyzing historical weather data from the Ge
 *   **Flexible Analysis**: Allows for analysis of weather data based on custom time periods and locations.
 *   **Geospatial Analysis**: Interpolates weather data for any address in Germany, even if there is no direct weather station.
 *   **Data Aggregation**: Calculates daily mean temperature and aggregates data by month and year.
-*   **Data Visualization**: Presents results in both tabular and graphical formats.
-*   **RESTful API**: Provides a RESTful API for accessing weather data (under development).
+*   **Data Visualization**: Presents results in both tabular and graphical formats, including temperature plots.
+*   **RESTful API**: Provides a RESTful API for accessing weather data and generating plots.
 
 ## Getting Started
 

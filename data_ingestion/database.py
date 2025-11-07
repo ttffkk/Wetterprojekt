@@ -51,6 +51,13 @@ class Database:
         rows = cur.fetchall()
         return rows
 
+    def get_all_parameters(self):
+        """Query all rows in the Parameter table"""
+        cur = self.conn.cursor()
+        cur.execute("SELECT Parameter_Name, Parameter_Description, Unit FROM Parameter")
+        rows = cur.fetchall()
+        return rows
+
     def get_weather_data(self, station_id: int, date: str):
         """
         Query weather data for a specific station and date.
@@ -187,3 +194,46 @@ class Database:
             print(f"Error: {csv_filepath} not found.")
         except Exception as e:
             print(f"An error occurred while processing {csv_filepath}: {e}")
+
+    def insert_parameters(self, file_path):
+        try:
+            with open(file_path, 'r', encoding=self.file_encoding) as f:
+                reader = csv.reader(f, delimiter=';')
+                header = [h.strip() for h in next(reader)]
+
+                # Find the indices of the required columns
+                try:
+                    name_index = header.index('Parameter')
+                    description_index = header.index('Parameterbeschreibung')
+                    unit_index = header.index('Einheit')
+                except ValueError as e:
+                    print(f"Header missing in {file_path}: {e}")
+                    return
+
+                c = self.conn.cursor()
+                for row in reader:
+                    if not row or len(row) <= max(name_index, description_index, unit_index):
+                        continue  # Skip empty or malformed rows
+
+                    parameter_name = row[name_index].strip()
+                    parameter_description = row[description_index].strip()
+                    unit = row[unit_index].strip()
+
+                    # Check if the parameter already exists
+                    c.execute("SELECT 1 FROM Parameter WHERE Parameter_Name = ?", (parameter_name,))
+                    if c.fetchone():
+                        continue  # Skip if parameter name already exists
+
+                    sql = "INSERT INTO Parameter (Parameter_Name, Parameter_Description, Unit) VALUES (?, ?, ?)"
+                    try:
+                        c.execute(sql, (parameter_name, parameter_description, unit))
+                    except sqlite3.IntegrityError as e:
+                        print(f"Skipping row due to IntegrityError: {e}")
+
+                self.conn.commit()
+                print(f"Data from {file_path} successfully inserted into Parameter.")
+
+        except FileNotFoundError:
+            print(f"Error: {file_path} not found.")
+        except Exception as e:
+            print(f"An error occurred while processing {file_path}: {e}")

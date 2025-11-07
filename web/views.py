@@ -10,6 +10,21 @@ from datetime import datetime, timedelta
 
 web_blueprint = Blueprint('web', __name__)
 
+@web_blueprint.route('/parameters')
+def get_parameters():
+    """Get all available parameters from the database."""
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+    db_config = config['database']
+    file_properties_config = config['source']['file_properties']
+
+    db = Database(db_config['path'], file_properties_config['na_value'], file_properties_config['file_encoding'])
+    db.create_connection()
+    parameters = db.get_all_parameters()
+    db.close_connection()
+
+    return jsonify(parameters)
+
 @web_blueprint.route('/')
 def index():
     """Homepage of the DWD Weather Analysis application.
@@ -68,20 +83,20 @@ def get_weather():
     db.create_connection()
     analysis = Analysis(db)
 
-    # Get interpolated temperature
-    temperature = analysis.interpolate_weather_data(location, date)
+    # Get interpolated weather data
+    weather_data = analysis.interpolate_weather_data(location, date)
 
     db.close_connection()
 
-    if temperature is None:
+    if weather_data is None:
         return jsonify({'error': 'Could not retrieve weather data.'}), 400
 
-    return jsonify({'temperature': temperature})
+    return jsonify(weather_data)
 
-@web_blueprint.route('/plot_temperature', methods=['POST'])
-def plot_temperature():
+@web_blueprint.route('/plot_data', methods=['POST'])
+def plot_data():
     """
-    Generate a temperature plot for a specific location and date range.
+    Generate a plot for a specific location, date range and parameter.
     ---
     parameters:
       - name: location
@@ -101,9 +116,14 @@ def plot_temperature():
         format: date
         required: true
         description: The end date for the plot.
+      - name: parameter
+        in: formData
+        type: string
+        required: true
+        description: The parameter to plot.
     responses:
       200:
-        description: A base64 encoded PNG image of the temperature plot.
+        description: A base64 encoded PNG image of the plot.
         schema:
           type: string
           format: byte
@@ -113,8 +133,9 @@ def plot_temperature():
     location = request.form.get('location')
     start_date_str = request.form.get('start_date')
     end_date_str = request.form.get('end_date')
+    parameter = request.form.get('parameter')
 
-    if not location or not start_date_str or not end_date_str:
+    if not location or not start_date_str or not end_date_str or not parameter:
         return jsonify({'error': 'Invalid input'}), 400
 
     try:
@@ -139,15 +160,20 @@ def plot_temperature():
     db.create_connection()
     analysis = Analysis(db)
 
+    # Get all parameters from the database
+    parameters = {p[0]: (p[1], p[2]) for p in db.get_all_parameters()}
+    if parameter not in parameters:
+        return jsonify({'error': 'Invalid parameter.'}), 400
+
     dates = []
-    temperatures = []
+    values = []
     current_date = start_date
     while current_date <= end_date:
         date_str = current_date.strftime('%Y-%m-%d')
-        temp = analysis.interpolate_weather_data(location, date_str)
-        if temp is not None:
+        data = analysis.interpolate_weather_data(location, date_str)
+        if data and data.get(parameter) is not None:
             dates.append(current_date)
-            temperatures.append(temp)
+            values.append(data[parameter])
         current_date += timedelta(days=1)
 
     db.close_connection()
@@ -157,10 +183,10 @@ def plot_temperature():
 
     # Generate plot
     plt.figure(figsize=(10, 6))
-    plt.plot(dates, temperatures, marker='o', linestyle='-')
+    plt.plot(dates, values, marker='o', linestyle='-')
     plt.xlabel('Date')
-    plt.ylabel('Temperature (°C)')
-    plt.title(f'Temperature for {location} ({start_date_str} to {end_date_str})')
+    plt.ylabel(f'{parameters[parameter][0]} ({parameters[parameter][1]})')
+    plt.title(f'{parameters[parameter][0]} for {location} ({start_date_str} to {end_date_str})')
     plt.grid(True)
     plt.tight_layout()
 

@@ -1,0 +1,17 @@
+Stations_ID;Stations_Name;Parameter;Von_Datum;Bis_Datum;Gesamt_Fehlwerte;Beschreibung;eor;                                                                                                              
+1;Aach;TMK;01.01.1937;30.06.1986;730;Gesamt_Messzeitraum;eor;                                                                                                                                           
+1;Aach;TXK;01.01.1937;30.06.1986;730;Gesamt_Messzeitraum;eor;                                                                                                                                           
+1;Aach;TNK;01.01.1937;30.06.1986;730;Gesamt_Messzeitraum;eor;                                                                                                                                           
+1;Aach;NM;01.01.1937;30.06.1986;730;Gesamt_Messzeitraum;eor;                                                                                                                                            
+1;Aach;RSK;01.01.1937;30.06.1986;731;Gesamt_Messzeitraum;eor;                                                                                                                                           
+1;Aach;RSKF;01.01.1937;30.06.1986;731;Gesamt_Messzeitraum;eor;                                                                                                                                          
+1;Aach;SHK_TAG;01.01.1937;30.06.1986;730;Gesamt_Messzeitraum;eor;                                                                                                                                       
+Stations_ID;Stations_Name;Parameter;Von_Datum;Bis_Datum;Anzahl_Fehlwerte;Beschreibung;eor;                                                                                                              
+1;Aach;TMK;01.01.1945;31.12.1946;730;Kriegsjahre;eor;                                                                                                                                                   
+1;Aach;TXK;01.01.1945;31.12.1946;730;Kriegsjahre;eor;                                                                                                                                                   
+1;Aach;TNK;01.01.1945;31.12.1946;730;Kriegsjahre;eor;                                                                                                                                                   
+1;Aach;NM;01.01.1945;31.12.1946;730;Kriegsjahre;eor;                                                                                                                                                    
+1;Aach;RSK;31.12.1944;31.12.1946;731;Kriegsjahre;eor;                                                                                                                                                   
+1;Aach;RSKF;31.12.1944;31.12.1946;731;Kriegsjahre;eor;                                                                                                                                                  
+1;Aach;SHK_TAG;01.01.1945;31.12.1946;730;;eor;                                                                                                                                                          
+generiert: 15.05.2025 --  Deutscher Wetterdienst  --                                                                                                                                                    

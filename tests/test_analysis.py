@@ -71,10 +71,10 @@ class TestAnalysis(unittest.TestCase):
             if station_id == 2:
                 return {'TMK': 20.0}
             return None
-        self.mock_db.get_weather_data = MagicMock(side_effect=mock_get_weather_data)
+        self.mock_db.get_all_parameters.return_value = [('TMK', 'Temperature', '°C')]
 
         # Call the method
-        interpolated_temp = self.analysis.interpolate_weather_data('Some Address', '2025-11-06')
+        interpolated_data = self.analysis.interpolate_weather_data('Some Address', '2025-11-06')
 
         # Expected result:
         # weight1 = 1/10 = 0.1
@@ -82,7 +82,7 @@ class TestAnalysis(unittest.TestCase):
         # weighted_sum = 0.1 * 15.0 + 0.05 * 20.0 = 1.5 + 1.0 = 2.5
         # total_weight = 0.1 + 0.05 = 0.15
         # interpolated_temp = 2.5 / 0.15 = 16.666...
-        self.assertAlmostEqual(interpolated_temp, 16.666, delta=0.001)
+        self.assertAlmostEqual(interpolated_data['TMK'], 16.666, delta=0.001)
 
     def test_get_daily_mean_temperature(self):
         """Test the get_daily_mean_temperature method."""

@@ -1,9 +1,13 @@
-# Python
-__pycache__/
-*.pyc/
-
 # Data files
 data/
+data/**
+data/wetter.db
+data/unzipped/
 
-# IDE files
+# IDE
 .idea/
+
+# Python
+__pycache__/
+*.pyc
+.venv/

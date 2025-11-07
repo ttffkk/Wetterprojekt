@@ -10,10 +10,17 @@ from web.views import web_blueprint # Import the blueprint
 from data_ingestion.downloader import Downloader
 from data_ingestion.processor import DataProcessor
 from data_ingestion.database import Database
-from data_ingestion.importer import CsvImporter
+from data_ingestion.importer import CsvImporter, ParameterImporter
 
 app = Flask(__name__, template_folder='web/templates')
+
+app.config['SWAGGER'] = {
+    'title': 'DWD Weather Analysis API',
+    'uiversion': 3,
+    "specs_route": "/api/docs/"
+}
 swagger = Swagger(app)
+
 
 app.register_blueprint(web_blueprint) # Register the blueprint
 
@@ -22,6 +29,42 @@ def import_data_command():
     """Command to import the weather data."""
     import_data()
     click.echo("Data import finished.")
+
+@app.cli.command("import-parameters")
+def import_parameters_command():
+    """Command to import the parameter descriptions."""
+    with open('config.yaml', 'r') as file:
+        config = yaml.safe_load(file)
+    db_config = config['database']
+    paths_config = config['source']['paths']
+    file_properties_config = config['source']['file_properties']
+
+    db = Database(db_config['path'], file_properties_config['na_value'], file_properties_config['file_encoding'])
+    db.create_connection()
+    
+    # The metadata file is expected to be in the archive_dir
+    # We will assume one of the zip files has been extracted and the metadata file is present
+    # A more robust solution would be to download and extract the metadata file specifically
+    
+    # Find the metadata file in the extract_dir
+    extract_dir = paths_config['extract_dir']
+    metadata_file = None
+    for root, dirs, files in os.walk(extract_dir):
+        for file in files:
+            if file.startswith('Metadaten_Parameter'):
+                metadata_file = os.path.join(root, file)
+                break
+        if metadata_file:
+            break
+    
+    if metadata_file:
+        importer = ParameterImporter(db)
+        importer.import_parameters(metadata_file)
+    else:
+        click.echo("Metadata file not found. Please make sure at least one data archive is extracted.")
+    
+    db.close_connection()
+    click.echo("Parameter import finished.")
 
 def import_data():
     """Function to import the weather data."""

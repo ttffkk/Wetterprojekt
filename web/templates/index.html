@@ -34,7 +34,7 @@
 
         <hr class="my-5">
 
-        <h2 class="mb-4">Temperature Plot</h2>
+        <h2 class="mb-4">Data Plot</h2>
         <form id="plot-form" class="mb-4">
             <div class="mb-3">
                 <label for="plot-location" class="form-label">Location (Address in Germany)</label>
@@ -49,6 +49,12 @@
                     <label for="end-date" class="form-label">End Date</label>
                     <input type="date" class="form-control" id="end-date" name="end_date" required>
                 </div>
+            </div>
+            <div class="mb-3">
+                <label for="parameter" class="form-label">Parameter</label>
+                <select class="form-select" id="parameter" name="parameter" required>
+                    <!-- Options will be populated dynamically -->
+                </select>
             </div>
             <button type="submit" class="btn btn-primary">Generate Plot</button>
         </form>
@@ -98,6 +104,28 @@
     </div>
 
     <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            const parameterSelect = document.getElementById('parameter');
+
+            try {
+                const response = await fetch('/parameters');
+                const parameters = await response.json();
+
+                if (response.ok) {
+                    parameters.forEach(param => {
+                        const option = document.createElement('option');
+                        option.value = param[0];
+                        option.textContent = `${param[1]} (${param[2]})`;
+                        parameterSelect.appendChild(option);
+                    });
+                } else {
+                    console.error('Failed to load parameters');
+                }
+            } catch (error) {
+                console.error('Error loading parameters:', error);
+            }
+        });
+
         document.getElementById('weather-form').addEventListener('submit', async function(event) {
             event.preventDefault(); // Prevent default form submission
 
@@ -122,16 +150,23 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    weatherResultsDiv.innerHTML = `
+                    let html = `
                         <div class="card">
                             <div class="card-header">
                                 Weather Data for ${location} on ${date}
                             </div>
                             <ul class="list-group list-group-flush">
-                                <li class="list-group-item"><strong>Temperature:</strong> ${data.temperature.toFixed(2)} °C</li>
+                    `;
+                    for (const [key, value] of Object.entries(data)) {
+                        if (value !== null) {
+                            html += `<li class="list-group-item"><strong>${key}:</strong> ${value.toFixed(2)}</li>`;
+                        }
+                    }
+                    html += `
                             </ul>
                         </div>
                     `;
+                    weatherResultsDiv.innerHTML = html;
                 } else {
                     weatherResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">${data.error || 'An error occurred.'}</div>`;
                 }
@@ -149,6 +184,7 @@
             const location = document.getElementById('plot-location').value;
             const startDate = document.getElementById('start-date').value;
             const endDate = document.getElementById('end-date').value;
+            const parameter = document.getElementById('parameter').value;
             const plotResultsDiv = document.getElementById('plot-results');
             const plotLoadingSpinner = document.getElementById('plot-loading-spinner');
 
@@ -159,9 +195,10 @@
             formData.append('location', location);
             formData.append('start_date', startDate);
             formData.append('end_date', endDate);
+            formData.append('parameter', parameter);
 
             try {
-                const response = await fetch('/plot_temperature', {
+                const response = await fetch('/plot_data', {
                     method: 'POST',
                     body: formData
                 });
@@ -172,10 +209,10 @@
                     plotResultsDiv.innerHTML = `
                         <div class="card">
                             <div class="card-header">
-                                Temperature Plot for ${location}
+                                ${parameter} Plot for ${location}
                             </div>
                             <div class="card-body text-center">
-                                <img src="data:image/png;base64,${data.plot}" class="img-fluid" alt="Temperature Plot">
+                                <img src="data:image/png;base64,${data.plot}" class="img-fluid" alt="${parameter} Plot">
                             </div>
                         </div>
                     `;
