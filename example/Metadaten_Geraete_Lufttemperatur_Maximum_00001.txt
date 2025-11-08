@@ -1,5 +1,0 @@
-Stations_ID;Stationsname;Geo. Laenge [Grad];Geo. Breite [Grad];Stationshoehe [m];Geberhoehe ueber Grund [m];Von_Datum;Bis_Datum;Geraetetyp Name;Messverfahren;eor;
-1;Aach;;;;;19370101;19460630;Gerätetyp unbekannt;Temperaturmessung, konv.;eor;
-1;Aach;8.85;47.84;480;2;19460701;19580228;Maximumthermometer;Temperaturmessung, konv.;eor;
-1;Aach;8.85;47.84;478;2;19580301;19860630;Maximumthermometer;Temperaturmessung, konv.;eor;
-generiert: 15.05.2025 --  Deutscher Wetterdienst  --

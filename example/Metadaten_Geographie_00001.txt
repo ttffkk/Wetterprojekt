@@ -1,3 +1,0 @@
-Stations_id;Stationshoehe;Geogr.Breite;Geogr.Laenge;von_datum;bis_datum;Stationsname
-     1;  480.00; 47.8428;  8.8506;18910101;19580228;Aach
-     1;  478.00; 47.8413;  8.8493;19580301;19860630;Aach
