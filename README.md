@@ -12,6 +12,19 @@ A Python-based web application for analyzing historical weather data from the Ge
 *   **Data Visualization**: Presents results in both tabular and graphical formats, including temperature plots.
 *   **RESTful API**: Provides a RESTful API for accessing weather data and generating plots.
 
+## Roadmap
+
+The project is currently undergoing a major rework to improve its architecture, scalability, and feature set. Here are the key areas of development:
+
+*   **Database Migration**: The current SQLite database will be replaced with a more robust database system to handle larger datasets and more complex queries.
+*   **Data Ingestion as a Package**: The data ingestion process will be refactored into a standalone Python package with background processing capabilities for more efficient and non-blocking data downloads.
+*   **Dockerization**: The entire application will be containerized using Docker with a multi-container setup:
+    *   A container for the database.
+    *   A container for the web application.
+    *   A dedicated container for the data ingestion service.
+*   **Map Integration**: The web interface will be enhanced with map visualization using OpenStreet Maps or Google Maps to display weather station locations.
+*   **Station Data**: The application will be updated to download and store metadata for all available weather stations, not just the ones in the immediate vicinity of a query.
+
 ## Getting Started
 
 ### Prerequisites
