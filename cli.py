@@ -1,35 +1,14 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
+import typer
 import yaml
-import click
-from flask import Flask
-from flasgger import Swagger
-from web.views import web_blueprint # Import the blueprint
+import os
 from data_ingestion.data_pipeline import Downloader, DataProcessor, CsvImporter, ParameterImporter, StationImporter
+from data_ingestion.database import Database
 
-app = Flask(__name__, template_folder='web/templates')
+app = typer.Typer()
 
-app.config['SWAGGER'] = {
-    'title': 'DWD Weather Analysis API',
-    'uiversion': 3,
-    "specs_route": "/api/docs/"
-}
-swagger = Swagger(app)
-
-
-app.register_blueprint(web_blueprint) # Register the blueprint
-
-@app.cli.command("import-data")
-def import_data_command():
-    """Command to import the weather data."""
-    import_data()
-    click.echo("Data import finished.")
-
-
+@app.command()
 def import_data():
-    """Function to import the weather data."""
+    """Command to import the weather data."""
     # Load configuration from YAML file
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
@@ -89,9 +68,10 @@ def import_data():
     if metadata_file:
         parameter_importer.import_parameters(metadata_file)
     else:
-        click.echo("Metadata file for parameters not found. Please make sure at least one data archive is extracted.")
+        typer.echo("Metadata file for parameters not found. Please make sure at least one data archive is extracted.")
 
     db.close_connection()
+    typer.echo("Data import finished.")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+if __name__ == "__main__":
+    app()
