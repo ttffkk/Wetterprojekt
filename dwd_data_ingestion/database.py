@@ -14,15 +14,22 @@ class Database:
             specified by db_config
         """
         try:
+            host = os.getenv('DB_HOST', self.db_config.get('host', 'localhost'))
+            port = os.getenv('DB_PORT', self.db_config.get('port', '5432'))
+            user = os.getenv('DB_USER', self.db_config.get('user', 'user'))
+            password = os.getenv('DB_PASSWORD', self.db_config.get('password', 'password'))
+            dbname = os.getenv('DB_NAME', self.db_config.get('dbname', 'wetter'))
+
             self.conn = psycopg2.connect(
-                host=self.db_config['host'],
-                port=self.db_config['port'],
-                user=self.db_config['user'],
-                password=self.db_config['password'],
-                dbname=self.db_config['dbname']
+                host=host,
+                port=port,
+                user=user,
+                password=password,
+                dbname=dbname
             )
         except psycopg2.Error as e:
-            print(e)
+            print(f"Database connection error: {e}")
+            raise # Re-raise the exception to indicate connection failure
 
     def close_connection(self):
         """ close the database connection """
