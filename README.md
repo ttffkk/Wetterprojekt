@@ -5,7 +5,7 @@ A Python-based web application for analyzing historical weather data from the Ge
 ## Features
 
 *   **Automated Data Import**: Downloads and processes historical weather data directly from the DWD archive.
-*   **Database Storage**: Stores weather data in a SQLite database for efficient access.
+*   **Database Storage**: Stores weather data in a PostgreSQL database for efficient access.
 *   **Flexible Analysis**: Allows for analysis of weather data based on custom time periods and locations.
 *   **Geospatial Analysis**: Interpolates weather data for any address in Germany, even if there is no direct weather station.
 *   **Data Aggregation**: Calculates daily mean temperature and aggregates data by month and year.
@@ -16,7 +16,7 @@ A Python-based web application for analyzing historical weather data from the Ge
 
 The project is currently undergoing a major rework to improve its architecture, scalability, and feature set. Here are the key areas of development:
 
-*   **Database Migration**: The current SQLite database can be migrated to PostgreSQL to handle larger datasets and more complex queries.
+*   **Database Migration**: The project has been migrated to PostgreSQL to handle larger datasets and more complex queries.
 *   **Data Ingestion as a Package**: The data ingestion process has been refactored into a standalone Python package.
 *   **Dockerization**: The entire application will be containerized using Docker with a multi-container setup:
     *   A container for the database.
@@ -31,6 +31,7 @@ The project is currently undergoing a major rework to improve its architecture, 
 
 *   Python 3.x
 *   pip
+*   PostgreSQL Server
 
 ### Installation
 
@@ -53,11 +54,14 @@ The project is currently undergoing a major rework to improve its architecture, 
         ```
 
 3.  **Install the required packages:**
-
-    This will install FastAPI, Pandas, and other necessary packages.
     ```sh
     pip install -r requirements.txt
     ```
+    
+4.  **Set up the database:**
+    *   Make sure you have a PostgreSQL server running.
+    *   Create a new database (e.g., `wetter`).
+    *   Update the `database` section in your `config.yaml` with your database credentials.
 
 ## Usage
 
@@ -66,10 +70,10 @@ The project is currently undergoing a major rework to improve its architecture, 
 To run the data import process, execute the following command:
 
 ```sh
-python cli.py import-data
+dwd-ingest import-data
 ```
 
-This will download the latest data, process it, and store it in the SQLite database.
+This will download the latest data, process it, and store it in the PostgreSQL database.
 
 ### Web Application
 
@@ -88,17 +92,18 @@ This will start a local development server. You can access the application by na
 ├── .gitignore
 ├── config.yaml
 ├── Create_table.sql
+├── main.py
 ├── README.md
 ├── requirements.txt
-├── main.py
-├── cli.py
+├── setup.py
 ├── backend/
 │   └── analysis.py
 ├── data/
-├── data_ingestion/
+├── dwd_data_ingestion/
 │   ├── __init__.py
-│   ├── database.py
-│   └── data_pipeline.py
+│   ├── cli.py
+│   ├── data_pipeline.py
+│   └── database.py
 ├── tests/
 │   ├── test_analysis.py
 │   ├── test_downloader.py
@@ -133,5 +138,10 @@ The application is configured via the `config.yaml` file. Here is a description 
 
 | Variable        | Description                                           |
 | --------------- | ----------------------------------------------------- |
-| `path`          | The path to the SQLite database file.                 |
-| `sql_file_path` | Path to the SQL script for creating database tables. |
+| `type`          | The type of the database (e.g., "postgresql").        |
+| `host`          | The hostname or IP address of the database server.    |
+| `port`          | The port number of the database server.               |
+| `user`          | The username for connecting to the database.          |
+| `password`      | The password for the database user.                   |
+| `dbname`        | The name of the database to connect to.               |
+| `sql_file_path` | Path to the SQL script for creating database tables.  |

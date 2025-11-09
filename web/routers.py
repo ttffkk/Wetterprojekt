@@ -19,7 +19,7 @@ def get_db():
         config = yaml.safe_load(file)
     db_config = config['database']
     file_properties_config = config['source']['file_properties']
-    db = Database(db_config['path'], file_properties_config['na_value'], file_properties_config['file_encoding'])
+    db = Database(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'])
     db.create_connection()
     try:
         yield db
