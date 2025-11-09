@@ -1,25 +1,27 @@
-import sqlite3
+import psycopg2
 import os
 import csv
 
 class Database:
-    def __init__(self, db_file, na_value, file_encoding):
-        self.db_file = db_file
+    def __init__(self, db_config, na_value, file_encoding):
+        self.db_config = db_config
         self.conn = None
         self.na_value = na_value
         self.file_encoding = file_encoding
 
     def create_connection(self):
-        """ create a database connection to the SQLite database
-            specified by db_file
+        """ create a database connection to the PostgreSQL database
+            specified by db_config
         """
         try:
-            # create data directory if it doesn't exist
-            db_dir = os.path.dirname(self.db_file)
-            if not os.path.exists(db_dir):
-                os.makedirs(db_dir)
-            self.conn = sqlite3.connect(self.db_file)
-        except sqlite3.Error as e:
+            self.conn = psycopg2.connect(
+                host=self.db_config['host'],
+                port=self.db_config['port'],
+                user=self.db_config['user'],
+                password=self.db_config['password'],
+                dbname=self.db_config['dbname']
+            )
+        except psycopg2.Error as e:
             print(e)
 
     def close_connection(self):
@@ -36,10 +38,10 @@ class Database:
             print("SQL file read successfully.")
             c = self.conn.cursor()
             print("Executing SQL script...")
-            c.executescript(sql_script)
+            c.execute(sql_script)
             self.conn.commit()
             print("Tables created successfully.")
-        except sqlite3.Error as e:
+        except psycopg2.Error as e:
             print(f"Database error: {e}")
         except FileNotFoundError:
             print(f"Error: SQL file not found at {sql_file_path}")
@@ -68,7 +70,7 @@ class Database:
         """
         cur = self.conn.cursor()
         date_formated = date.replace("-", "")
-        cur.execute("SELECT * FROM Measurement WHERE Station_ID = ? AND MESS_DATUM = ?", (station_id, date_formated))
+        cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM = %s", (station_id, date_formated))
         row = cur.fetchone()
         if row:
             # get column names from cursor description
@@ -87,7 +89,7 @@ class Database:
         """
         cur = self.conn.cursor()
         date_pattern = f'{year}{month:02d}%'
-        cur.execute("SELECT * FROM Measurement WHERE Station_ID = ? AND MESS_DATUM LIKE ?", (station_id, date_pattern))
+        cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
         rows = cur.fetchall()
         if rows:
             columns = [description[0] for description in cur.description]
@@ -104,7 +106,7 @@ class Database:
         """
         cur = self.conn.cursor()
         date_pattern = f'{year}%'
-        cur.execute("SELECT * FROM Measurement WHERE Station_ID = ? AND MESS_DATUM LIKE ?", (station_id, date_pattern))
+        cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
         rows = cur.fetchall()
         if rows:
             columns = [description[0] for description in cur.description]
@@ -137,7 +139,7 @@ class Database:
                     del db_header[eor_index]
 
                 columns = ', '.join(db_header)
-                placeholders = ', '.join(['?'] * len(db_header))
+                placeholders = ', '.join(['%s'] * len(db_header))
                 sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
 
                 with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
@@ -163,15 +165,18 @@ class Database:
                         
                         try:
                             c.execute(sql, cleaned_row)
-                        except sqlite3.IntegrityError as e:
+                        except psycopg2.IntegrityError as e:
                             print(f"Skipping row due to IntegrityError: {e}")
+                            self.conn.rollback()
                     self.conn.commit()
                     print(f"Data from {csv_filepath} successfully inserted into {table_name}.")
 
             elif 'Stationsname' in header:
                 # Existing logic for station files
                 table_name = 'Station'
-                sql = f"INSERT INTO Station ({', '.join(header)}) VALUES ({', '.join(['?'] * len(header))})"
+                columns = ', '.join(header)
+                placeholders = ', '.join(['%s'] * len(header))
+                sql = f"INSERT INTO Station ({columns}) VALUES ({placeholders})"
                 with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
                     reader = csv.reader(f, delimiter=delimiter)
                     next(reader)  # Skip header
@@ -182,8 +187,9 @@ class Database:
                             if field == '': cleaned_row[i] = None
                         try:
                             c.execute(sql, cleaned_row)
-                        except sqlite3.IntegrityError as e:
+                        except psycopg2.IntegrityError as e:
                             print(f"Skipping row due to IntegrityError: {e}")
+                            self.conn.rollback()
                     self.conn.commit()
                     print(f"Data from {csv_filepath} successfully inserted into {table_name}.")
             else:
@@ -220,15 +226,16 @@ class Database:
                     unit = row[unit_index].strip()
 
                     # Check if the parameter already exists
-                    c.execute("SELECT 1 FROM Parameter WHERE Parameter_Name = ?", (parameter_name,))
+                    c.execute("SELECT 1 FROM Parameter WHERE Parameter_Name = %s", (parameter_name,))
                     if c.fetchone():
                         continue  # Skip if parameter name already exists
 
-                    sql = "INSERT INTO Parameter (Parameter_Name, Parameter_Description, Unit) VALUES (?, ?, ?)"
+                    sql = "INSERT INTO Parameter (Parameter_Name, Parameter_Description, Unit) VALUES (%s, %s, %s)"
                     try:
                         c.execute(sql, (parameter_name, parameter_description, unit))
-                    except sqlite3.IntegrityError as e:
+                    except psycopg2.IntegrityError as e:
                         print(f"Skipping row due to IntegrityError: {e}")
+                        self.conn.rollback()
 
                 self.conn.commit()
                 print(f"Data from {file_path} successfully inserted into Parameter.")

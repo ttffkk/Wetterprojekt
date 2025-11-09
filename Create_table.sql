@@ -36,7 +36,7 @@ FOREIGN KEY (Station_ID) REFERENCES Station(Station_ID)
 
 CREATE TABLE IF NOT EXISTS Parameter
 (
-Parameter_ID INTEGER PRIMARY KEY AUTOINCREMENT,
+Parameter_ID SERIAL PRIMARY KEY,
 Parameter_Name TEXT,
 Parameter_Description TEXT,
 Unit TEXT

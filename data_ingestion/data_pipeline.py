@@ -24,7 +24,7 @@ class DataIngestionPipeline:
         db_config = self.config['database']
 
         # 0. Create the database and tables
-        self.db = Database(db_config['path'], file_properties_config['na_value'], file_properties_config['file_encoding'])
+        self.db = Database(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'])
         self.db.create_connection()
         self.db.create_tables(db_config['sql_file_path'])
 
@@ -212,8 +212,9 @@ class StationImporter:
                 try:
                     cursor.execute(
                         """
-                        INSERT OR IGNORE INTO Station (Station_ID, von_datum, bis_datum, Stattionhoehe, geoBreite, geoLaenge, Stationsname, Bundesland)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT INTO Station (Station_ID, von_datum, bis_datum, Stattionhoehe, geoBreite, geoLaenge, Stationsname, Bundesland)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (Station_ID) DO NOTHING
                         """,
                         (row['Station_ID'], row['von_datum'], row['bis_datum'], row['Stattionhoehe'], row['geoBreite'], row['geoLaenge'], row['Stationsname'], row['Bundesland'])
                     )
