@@ -5,7 +5,7 @@ A Python-based web application for analyzing historical weather data from the Ge
 ## Features
 
 *   **Automated Data Import**: Downloads and processes historical weather data directly from the DWD archive.
-*   **Database Storage**: Stores weather data in a local SQLite database for efficient access.
+*   **Database Storage**: Stores weather data in a PostgreSQL database for efficient access.
 *   **Flexible Analysis**: Allows for analysis of weather data based on custom time periods and locations.
 *   **Geospatial Analysis**: Interpolates weather data for any address in Germany, even if there is no direct weather station.
 *   **Data Aggregation**: Calculates daily mean temperature and aggregates data by month and year.
@@ -16,7 +16,7 @@ A Python-based web application for analyzing historical weather data from the Ge
 
 The project is currently undergoing a major rework to improve its architecture, scalability, and feature set. Here are the key areas of development:
 
-*   **Database Migration**: The current SQLite database will be replaced with a more robust database system to handle larger datasets and more complex queries.
+*   **Database Migration**: The current SQLite database will be migrated to PostgreSQL to handle larger datasets and more complex queries.
 *   **Data Ingestion as a Package**: The data ingestion process will be refactored into a standalone Python package with background processing capabilities for more efficient and non-blocking data downloads.
 *   **Dockerization**: The entire application will be containerized using Docker with a multi-container setup:
     *   A container for the database.
@@ -31,6 +31,7 @@ The project is currently undergoing a major rework to improve its architecture, 
 
 *   Python 3.x
 *   pip
+*   PostgreSQL
 
 ### Installation
 
@@ -69,7 +70,7 @@ To run the data import process, execute the following command:
 flask import-data
 ```
 
-This will download the latest data, process it, and store it in the SQLite database located in the `data/` directory.
+This will download the latest data, process it, and store it in the PostgreSQL database.
 
 ### Web Application
 
@@ -130,5 +131,9 @@ The application is configured via the `config.yaml` file. Here is a description 
 
 | Variable        | Description                                           |
 | --------------- | ----------------------------------------------------- |
-| `path`          | Path to the SQLite database file.                     |
+| `host`          | The hostname of the PostgreSQL server.                |
+| `port`          | The port of the PostgreSQL server.                    |
+| `user`          | The username for the database connection.             |
+| `password`      | The password for the database connection.             |
+| `dbname`        | The name of the database to connect to.               |
 | `sql_file_path` | Path to the SQL script for creating database tables. |
