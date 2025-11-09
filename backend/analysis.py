@@ -1,6 +1,6 @@
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
-from data_ingestion.database import Database
+from dwd_data_ingestion.database import Database
 import pandas as pd
 from datetime import datetime, timedelta
 

@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Request, Form, Depends
+from fastapi import APIRouter, Request, Form, Depends, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 import yaml
 from backend.analysis import Analysis
-from data_ingestion.database import Database
+from dwd_data_ingestion.database import Database
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import io
 import base64
 import csv
 from datetime import datetime, timedelta
+import os
 
 router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
