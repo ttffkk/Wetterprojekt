@@ -1,5 +1,6 @@
 source:
   url: "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/historical/"
+  station_meta_url: "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/daily/kl/historical/KL_Tageswerte_Beschreibung_Stationen.txt"
   patterns:
     zip_pattern: 'href="(tageswerte_KL_.*?\.zip)"'
     product_pattern_to_extract: 'produkt_'

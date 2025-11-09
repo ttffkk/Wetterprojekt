@@ -43,3 +43,8 @@ class Downloader:
         except requests.exceptions.RequestException as e:
             print(f"Failed to download {url}. Error: {e}")
             return None
+            
+    def download_station_file(self, station_url):
+        """Downloads the station description file."""
+        print("Downloading station description file...")
+        return self.download_file(station_url)

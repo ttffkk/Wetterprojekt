@@ -7,8 +7,7 @@ Stattionhoehe INTEGER,
 geoBreite REAL,
 geoLaenge REAL,
 Stationsname TEXT,
-Bundesland TEXT,
-Abgabe TEXT
+Bundesland TEXT
 );
 
 CREATE TABLE IF NOT EXISTS Measurement

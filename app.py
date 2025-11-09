@@ -11,6 +11,7 @@ from data_ingestion.downloader import Downloader
 from data_ingestion.processor import DataProcessor
 from data_ingestion.database import Database
 from data_ingestion.importer import CsvImporter, ParameterImporter
+from data_ingestion.station_importer import StationImporter
 
 app = Flask(__name__, template_folder='web/templates')
 
@@ -87,11 +88,17 @@ def import_data():
     downloader = Downloader(url=source_config['url'], download_dir=paths_config['download_dir'])
     processor = DataProcessor(paths_config['download_dir'], paths_config['extract_dir'], file_properties_config['file_encoding'], file_properties_config['na_value'])
     importer = CsvImporter(db)
+    station_importer = StationImporter(db.conn)
 
-    # 2. Get all file URLs
+    # 2. Download and import station data
+    station_file_path = downloader.download_station_file(source_config['station_meta_url'])
+    if station_file_path:
+        station_importer.import_stations(station_file_path)
+
+    # 3. Get all file URLs
     file_urls = downloader.get_file_urls(pattern=patterns_config['zip_pattern'])
 
-    # 3. Process each file one by one
+    # 4. Process each file one by one
     for url in file_urls:
         zip_file_path = downloader.download_file(url)
         if zip_file_path:
