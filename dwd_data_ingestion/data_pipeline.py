@@ -8,7 +8,7 @@ import csv
 import sqlite3
 import typer
 
-from .database import Database # Assuming Database class is in data_ingestion/database.py
+from .database import Database
 
 class DataIngestionPipeline:
     def __init__(self, config):
