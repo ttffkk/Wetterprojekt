@@ -16,4 +16,4 @@ COPY . .
 
 # Entrypoint for the ingestion service
 # This container will run the data ingestion command
-ENTRYPOINT ["dwd-ingest", "import-data"]
+ENTRYPOINT ["dwd-ingest"]
