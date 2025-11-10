@@ -1,7 +1,8 @@
-import csv
-
 import psycopg2
-
+import os
+import csv
+import pandas as pd
+import io
 
 class Database:
     def __init__(self, db_config, na_value, file_encoding):
@@ -123,77 +124,45 @@ class Database:
         """
         try:
             with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
-                reader = csv.reader(f, delimiter=delimiter)
-                header = [h.strip() for h in next(reader)]
+                header = [h.strip() for h in f.readline().split(delimiter)]
 
-            # Determine table based on headers
             if 'MESS_DATUM' in header and 'STATIONS_ID' in header:
                 table_name = 'Measurement'
                 
-                # Prepare header and SQL for Measurement data
-                # Map STATIONS_ID to Station_ID
-                db_header = [col if col != 'STATIONS_ID' else 'Station_ID' for col in header]
+                # Use pandas for efficient cleaning and preparation
+                df = pd.read_csv(csv_filepath, delimiter=delimiter, na_values=str(self.na_value), encoding=self.file_encoding)
+                df.rename(columns=lambda c: c.strip(), inplace=True)
+                df.rename(columns={'STATIONS_ID': 'Station_ID'}, inplace=True)
+
+                if 'eor' in df.columns:
+                    df.drop(columns=['eor'], inplace=True)
+
+                db_cols = [col for col in df.columns if col in [
+                    'Station_ID', 'MESS_DATUM', 'QN_3', 'FX', 'FM', 'QN_4', 'RSK', 'RSKF', 
+                    'SDK', 'SHK_TAG', 'NM', 'VPM', 'PM', 'TMK', 'UPM', 'TXK', 'TNK', 'TGK'
+                ]]
                 
-                # Filter out the 'eor' column if it exists
-                eor_index = -1
-                if 'eor' in db_header:
-                    eor_index = db_header.index('eor')
-                    del db_header[eor_index]
+                buffer = io.StringIO()
+                df[db_cols].to_csv(buffer, index=False, header=False, sep='\t', na_rep='\\N')
+                buffer.seek(0);
 
-                columns = ', '.join(db_header)
-                placeholders = ', '.join(['%s'] * len(db_header))
-                sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-
-                with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
-                    reader = csv.reader(f, delimiter=delimiter)
-                    next(reader)  # Skip header
-
-                    c = self.conn.cursor()
-                    for row in reader:
-                        if not row: continue # Skip empty rows
-                        
-                        # Remove 'eor' value from row if exists
-                        if eor_index != -1:
-                            del row[eor_index]
-
-                        # Clean row and handle configured na_value values
-                        cleaned_row = []
-                        for field in row:
-                            cleaned_field = field.strip()
-                            if cleaned_field == str(self.na_value) or cleaned_field == '':
-                                cleaned_row.append(None)
-                            else:
-                                cleaned_row.append(cleaned_field)
-                        
-                        try:
-                            c.execute(sql, cleaned_row)
-                        except psycopg2.IntegrityError as e:
-                            print(f"Skipping row due to IntegrityError: {e}")
-                            self.conn.rollback()
+                c = self.conn.cursor()
+                try:
+                    c.copy_from(buffer, table_name, sep='\t', null='\\N', columns=db_cols)
                     self.conn.commit()
-                    print(f"Data from {csv_filepath} successfully inserted into {table_name}.")
+                    print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} using COPY.")
+                except Exception as e:
+                    self.conn.rollback()
+                    print(f"Error using COPY for {os.path.basename(csv_filepath)}: {e}")
+                    # Fallback to row-by-row insert for debugging or handling specific errors
+                    # (You might want to remove this in production)
+                    print("Falling back to row-by-row insertion...")
+                    self._insert_csv_row_by_row(csv_filepath, delimiter)
+
 
             elif 'Stationsname' in header:
-                # Existing logic for station files
-                table_name = 'Station'
-                columns = ', '.join(header)
-                placeholders = ', '.join(['%s'] * len(header))
-                sql = f"INSERT INTO Station ({columns}) VALUES ({placeholders})"
-                with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
-                    reader = csv.reader(f, delimiter=delimiter)
-                    next(reader)  # Skip header
-                    c = self.conn.cursor()
-                    for row in reader:
-                        cleaned_row = [field.strip() for field in row]
-                        for i, field in enumerate(cleaned_row):
-                            if field == '': cleaned_row[i] = None
-                        try:
-                            c.execute(sql, cleaned_row)
-                        except psycopg2.IntegrityError as e:
-                            print(f"Skipping row due to IntegrityError: {e}")
-                            self.conn.rollback()
-                    self.conn.commit()
-                    print(f"Data from {csv_filepath} successfully inserted into {table_name}.")
+                # Existing logic for station files (usually small, so row-by-row is fine)
+                self._insert_csv_row_by_row(csv_filepath, delimiter)
             else:
                 print(f"Error: Cannot determine table for CSV {csv_filepath}. Headers: {header}")
                 return
@@ -202,6 +171,59 @@ class Database:
             print(f"Error: {csv_filepath} not found.")
         except Exception as e:
             print(f"An error occurred while processing {csv_filepath}: {e}")
+
+    def _insert_csv_row_by_row(self, csv_filepath, delimiter):
+        """
+        Private helper for original row-by-row insertion logic.
+        """
+        with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            header = [h.strip() for h in next(reader)]
+
+        if 'MESS_DATUM' in header and 'STATIONS_ID' in header:
+            table_name = 'Measurement'
+            db_header = [col if col != 'STATIONS_ID' else 'Station_ID' for col in header]
+            if 'eor' in db_header:
+                db_header.remove('eor')
+            
+            columns = ', '.join(db_header)
+            placeholders = ', '.join(['%s'] * len(db_header))
+            sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
+            
+            eor_index = header.index('eor') if 'eor' in header else -1
+
+        elif 'Stationsname' in header:
+            table_name = 'Station'
+            columns = ', '.join(header)
+            placeholders = ', '.join(['%s'] * len(header))
+            sql = f"INSERT INTO Station ({columns}) VALUES ({placeholders})"
+            eor_index = -1 # No eor column in station files
+        else:
+            return # Already handled in public method
+
+        with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
+            reader = csv.reader(f, delimiter=delimiter)
+            next(reader)  # Skip header
+            c = self.conn.cursor()
+            for row in reader:
+                if not row: continue
+                if eor_index != -1:
+                    del row[eor_index]
+                
+                cleaned_row = []
+                for field in row:
+                    cleaned_field = field.strip()
+                    if cleaned_field == str(self.na_value) or cleaned_field == '':
+                        cleaned_row.append(None)
+                    else:
+                        cleaned_row.append(cleaned_field)
+                try:
+                    c.execute(sql, cleaned_row)
+                except psycopg2.IntegrityError as e:
+                    print(f"Skipping row due to IntegrityError: {e}")
+                    self.conn.rollback()
+            self.conn.commit()
+            print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} (row-by-row).")
 
     def insert_parameters(self, file_path):
         try:
