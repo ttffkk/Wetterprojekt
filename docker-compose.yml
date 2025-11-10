@@ -20,12 +20,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: wetter
-      DB_USER: user
-      DB_PASSWORD: password
     depends_on:
       - db
     networks:
@@ -35,12 +29,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ingestion
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_NAME: wetter
-      DB_USER: user
-      DB_PASSWORD: password
     depends_on:
       - db
     networks:
