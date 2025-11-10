@@ -4,16 +4,15 @@ FROM python:3.9-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements file and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy files required for installation
+COPY requirements.txt setup.py ./
 
-# Copy the data ingestion module and config file
-COPY dwd_data_ingestion dwd_data_ingestion/
-COPY config.yaml .
-COPY Create_table.sql . # Needed for database setup
-COPY setup.py . # Needed for dwd-ingest command to be available
-RUN pip install -e . # Install the package in editable mode to make dwd-ingest available
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -e .
+
+# Copy the rest of the application
+COPY . .
 
 # Entrypoint for the ingestion service
 # This container will run the data ingestion command
