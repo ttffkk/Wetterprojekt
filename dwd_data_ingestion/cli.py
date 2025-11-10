@@ -2,6 +2,9 @@ import typer
 import yaml
 from .data_pipeline import DataIngestionPipeline
 
+app = typer.Typer()
+
+@app.command()
 def main(config_file: str = typer.Option("config.yaml", help="Path to the configuration file.")):
     """
     Command to import the weather data from DWD.
@@ -22,6 +25,6 @@ def main(config_file: str = typer.Option("config.yaml", help="Path to the config
     typer.echo("Data import finished.")
 
 if __name__ == "__main__":
-    typer.run(main)
+    app()
 
 

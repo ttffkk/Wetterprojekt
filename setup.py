@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'dwd-ingest=dwd_data_ingestion.cli:main',
+            'dwd-ingest=dwd_data_ingestion.cli:app',
         ],
     },
 )
