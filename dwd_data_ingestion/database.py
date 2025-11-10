@@ -1,6 +1,7 @@
-import psycopg2
-import os
 import csv
+
+import psycopg2
+
 
 class Database:
     def __init__(self, db_config, na_value, file_encoding):
@@ -22,7 +23,8 @@ class Database:
                 dbname=self.db_config['dbname']
             )
         except psycopg2.Error as e:
-            print(e)
+            print(f"Database connection error: {e}")
+            raise
 
     def close_connection(self):
         """ close the database connection """
