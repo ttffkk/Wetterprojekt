@@ -1,14 +1,13 @@
-import requests
-import re
 import os
+import re
 import zipfile
-import glob
+
 import pandas as pd
-import csv
-import sqlite3
+import requests
 import typer
 
 from .database import Database
+
 
 class DataIngestionPipeline:
     def __init__(self, config):

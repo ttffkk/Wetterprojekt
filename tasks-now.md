@@ -6,6 +6,5 @@
 | 7 | Rework: Docker | Create a Dockerfile for the web application container. | ✅ |
 | 7 | Rework: Docker | Create a Dockerfile for the data ingestion background service. | ✅ |
 | 7 | Rework: Docker | Create a `docker-compose.yml` file to manage the multi-container setup (web, database, ingestion). | ✅ |
-| 7 | Rework: Web | Integrate a map library (e.g., OpenStreet Maps, Google Maps) into the frontend. | ⬜️ |
-| 7 | Rework: Web | Display weather station locations on the map. | ⬜️ |
-|8 |BUG FIX| routers.py wont start|⬜️|
+| 7 | Rework: Web | Integrate a map library (e.g., OpenStreet Maps, Google Maps) into the frontend. | ✅ |
+| 7 | Rework: Web | Display weather station locations on the map. | ✅ |

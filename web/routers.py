@@ -39,6 +39,12 @@ async def get_parameters(db: Database = Depends(get_db)):
     parameters = db.get_all_parameters()
     return JSONResponse(content=parameters)
 
+@router.get("/stations")
+async def get_stations(db: Database = Depends(get_db)):
+    """Get all weather stations from the database."""
+    stations = db.get_all_stations()
+    return JSONResponse(content=stations)
+
 @router.post("/weather")
 async def get_weather(location: str = Form(...), date: str = Form(...), db: Database = Depends(get_db)):
     """
