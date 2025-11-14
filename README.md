@@ -10,6 +10,7 @@ A Python-based web application for analyzing historical weather data from the Ge
 *   **Flexible Analysis**: Provides endpoints for analyzing weather data by custom time periods and locations.
 *   **Data Visualization**: Generates temperature plots for specified locations and date ranges.
 *   **RESTful API**: A modern, interactive API built with FastAPI, with automatic documentation.
+*   **Modern Frontend**: A Vue.js-based frontend for interacting with the API.
 *   **Dockerized Environment**: Comes with a complete Docker setup for easy deployment and consistent development environments.
 
 ## Getting Started with Docker
@@ -29,14 +30,7 @@ This is the recommended way to run the application.
     cd Wetterprojekt
     ```
 
-2.  **Configure your environment:**
-    Create a `.env` file by copying the example file. This file will hold your database credentials.
-    ```sh
-    cp .env.example .env
-    ```
-    You can modify the values in `.env` if needed, but the defaults are set up to work with Docker Compose out of the box.
-
-3.  **Build and run the services:**
+2.  **Build and run the services:**
     This command will build the Docker images for the web and ingestion services, and start the web server and the PostgreSQL database.
     ```sh
     docker-compose up --build -d
@@ -50,7 +44,7 @@ This is the recommended way to run the application.
     ```
 
 5.  **Access the Application:**
-    *   **Web Interface**: `http://localhost:8000`
+    *   **Web Interface**: `http://localhost:8080`
     *   **API Docs (Swagger UI)**: `http://localhost:8000/docs`
 
 ## Local Development Setup
@@ -88,7 +82,7 @@ If you prefer to run the application without Docker, follow these steps.
 1.  **Run the Data Import:**
     This command uses the credentials from your `config.yaml` to connect to the database.
     ```sh
-    dwd-ingest import-data
+    python -m dwd_data_ingestion.cli import-data
     ```
 
 2.  **Run the Web Application:**
@@ -113,7 +107,6 @@ If you prefer to run the application without Docker, follow these steps.
 │   ├── routers.py
 │   └── templates/
 │       └── index.html
-├── .env.example
 ├── .gitignore
 ├── config.yaml
 ├── Create_table.sql
@@ -131,4 +124,4 @@ If you prefer to run the application without Docker, follow these steps.
 The application can be configured in two ways depending on the environment:
 
 *   **`config.yaml`**: Used for local development when not using Docker. It contains settings for the data source and database connection.
-*   **`.env` file**: Used for Docker deployments. The values in this file override the database settings in `config.yaml`. The `docker-compose.yml` file reads this file to configure the services.
+*   **Environment Variables**: Used for Docker deployments. The values in `docker-compose.yml` override the database settings in `config.yaml`.
