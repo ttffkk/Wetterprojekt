@@ -1,10 +1,12 @@
 import os
 import re
 import zipfile
+import time
 
 import pandas as pd
 import requests
 import typer
+import psycopg
 
 from .database import Database
 
@@ -16,6 +18,7 @@ class DataIngestionPipeline:
 
     def run(self):
         """Command to import the weather data."""
+        time.sleep(10)
         source_config = self.config['source']
         patterns_config = source_config['patterns']
         file_properties_config = source_config['file_properties']
@@ -186,9 +189,6 @@ class StationImporter:
             # Read the fixed-width file, skipping header rows
             df = pd.read_fwf(file_path, colspecs=col_specs, names=col_names, skiprows=2, encoding='latin-1', dtype=str)
 
-            # The 'Abgabe' column is not well-structured, so we'll ignore it for now
-            # as it's not critical for the main functionality.
-
             # Clean up the data
             df['Stationsname'] = df['Stationsname'].str.strip()
             df['Bundesland'] = df['Bundesland'].str.strip()
@@ -206,20 +206,19 @@ class StationImporter:
             df['Station_ID'] = df['Station_ID'].astype(int)
 
             # Insert data into the database
-            cursor = self.db_connection.cursor()
-            for _, row in df.iterrows():
-                try:
-                    cursor.execute(
-                        """
-                        INSERT INTO Station (Station_ID, von_datum, bis_datum, Stattionhoehe, geoBreite, geoLaenge, Stationsname, Bundesland)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (Station_ID) DO NOTHING
-                        """,
-                        (row['Station_ID'], row['von_datum'], row['bis_datum'], row['Stattionhoehe'], row['geoBreite'], row['geoLaenge'], row['Stationsname'], row['Bundesland'])
-                    )
-                except Exception as e:
-                    # This will catch primary key conflicts and other insertion errors
-                    print(f"Skipping duplicate or invalid station {row['Station_ID']}: {e}")
+            with self.db_connection.cursor() as cur:
+                for _, row in df.iterrows():
+                    try:
+                        cur.execute(
+                            """
+                            INSERT INTO Station (Station_ID, von_datum, bis_datum, Stattionhoehe, geoBreite, geoLaenge, Stationsname, Bundesland)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (Station_ID) DO NOTHING
+                            """,
+                            (row['Station_ID'], row['von_datum'], row['bis_datum'], row['Stattionhoehe'], row['geoBreite'], row['geoLaenge'], row['Stationsname'], row['Bundesland'])
+                        )
+                    except Exception as e:
+                        print(f"Skipping duplicate or invalid station {row['Station_ID']}: {e}")
             
             self.db_connection.commit()
             print(f"Successfully imported {len(df)} stations.")
@@ -276,13 +275,11 @@ class DataProcessor:
 
             if extracted_file_path.endswith('.txt'):
                 new_file_path = os.path.splitext(extracted_file_path)[0] + ".csv"
-                # Write the dataframe to a new csv file
                 df.to_csv(new_file_path, index=False, sep=delimiter)
                 print(f"  - Renamed to {os.path.basename(new_file_path)}")
                 os.remove(extracted_file_path)
                 return new_file_path
             else:
-                # if it is already a csv, we just overwrite it with the cleaned data
                 df.to_csv(extracted_file_path, index=False, sep=delimiter)
                 return extracted_file_path
 

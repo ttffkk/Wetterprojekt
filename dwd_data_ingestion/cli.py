@@ -26,5 +26,3 @@ def main(config_file: str = typer.Option("config.yaml", help="Path to the config
 
 if __name__ == "__main__":
     app()
-
-

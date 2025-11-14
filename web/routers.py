@@ -3,7 +3,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 import yaml
 from backend.analysis import Analysis
-from dwd_data_ingestion.database import Database
+from backend.database import AsyncDatabase
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -17,36 +17,36 @@ router = APIRouter()
 templates = Jinja2Templates(directory="web/templates")
 
 # Dependency to get the database connection
-def get_db():
+async def get_db():
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
     db_config = config['database']
     file_properties_config = config['source']['file_properties']
-    db = Database(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'])
-    db.create_connection()
+    db = AsyncDatabase(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'])
+    await db.create_connection()
     try:
         yield db
     finally:
-        db.close_connection()
+        await db.close_connection()
 
 @router.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @router.get("/parameters")
-async def get_parameters(db: Database = Depends(get_db)):
+async def get_parameters(db: AsyncDatabase = Depends(get_db)):
     """Get all available parameters from the database."""
-    parameters = db.get_all_parameters()
+    parameters = await db.get_all_parameters()
     return JSONResponse(content=parameters)
 
 @router.get("/stations")
-async def get_stations(db: Database = Depends(get_db)):
+async def get_stations(db: AsyncDatabase = Depends(get_db)):
     """Get all weather stations from the database."""
-    stations = db.get_all_stations()
+    stations = await db.get_all_stations()
     return JSONResponse(content=stations)
 
 @router.post("/weather")
-async def get_weather(location: str = Form(...), date: str = Form(...), db: Database = Depends(get_db)):
+async def get_weather(location: str = Form(...), date: str = Form(...), db: AsyncDatabase = Depends(get_db)):
     """
     Get weather data for a specific location and date.
     """
@@ -54,7 +54,7 @@ async def get_weather(location: str = Form(...), date: str = Form(...), db: Data
         return JSONResponse(content={'error': 'Invalid input'}, status_code=400)
 
     analysis = Analysis(db)
-    weather_data = analysis.interpolate_weather_data(location, date)
+    weather_data = await analysis.interpolate_weather_data(location, date)
 
     if weather_data is None:
         return JSONResponse(content={'error': 'Could not retrieve weather data.'}, status_code=400)
@@ -62,7 +62,7 @@ async def get_weather(location: str = Form(...), date: str = Form(...), db: Data
     return JSONResponse(content=weather_data)
 
 @router.post("/plot_data")
-async def plot_data(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), parameter: str = Form(...), db: Database = Depends(get_db)):
+async def plot_data(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), parameter: str = Form(...), db: AsyncDatabase = Depends(get_db)):
     """
     Generate a plot for a specific location, date range and parameter.
     """
@@ -79,7 +79,8 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
         return JSONResponse(content={'error': 'Start date cannot be after end date.'}, status_code=400)
 
     analysis = Analysis(db)
-    parameters = {p[0]: (p[1], p[2]) for p in db.get_all_parameters()}
+    all_params = await db.get_all_parameters()
+    parameters = {p[0]: (p[1], p[2]) for p in all_params}
     if parameter not in parameters:
         return JSONResponse(content={'error': 'Invalid parameter.'}, status_code=400)
 
@@ -88,7 +89,7 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
     current_date = start_date_obj
     while current_date <= end_date_obj:
         date_str = current_date.strftime('%Y-%m-%d')
-        data = analysis.interpolate_weather_data(location, date_str)
+        data = await analysis.interpolate_weather_data(location, date_str)
         if data and data.get(parameter) is not None:
             dates.append(current_date)
             values.append(data[parameter])
@@ -118,7 +119,7 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
     return JSONResponse(content={'plot': plot_base64})
 
 @router.post("/export_csv")
-async def export_csv(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), db: Database = Depends(get_db)):
+async def export_csv(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), db: AsyncDatabase = Depends(get_db)):
     """
     Export weather data to a CSV file.
     """
@@ -135,7 +136,7 @@ async def export_csv(location: str = Form(...), start_date: str = Form(...), end
         return JSONResponse(content={'error': 'Start date cannot be after end date.'}, status_code=400)
 
     analysis = Analysis(db)
-    weather_data = analysis.get_weather_data_for_period(location, start_date, end_date)
+    weather_data = await analysis.get_weather_data_for_period(location, start_date, end_date)
 
     if not weather_data or len(weather_data) <= 1:
         return JSONResponse(content={'error': 'No weather data available for the specified period.'}, status_code=400)

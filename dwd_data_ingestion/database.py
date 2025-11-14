@@ -1,4 +1,4 @@
-import psycopg2
+import psycopg
 import os
 import csv
 import pandas as pd
@@ -16,14 +16,14 @@ class Database:
             specified by db_config
         """
         try:
-            self.conn = psycopg2.connect(
+            self.conn = psycopg.connect(
                 host=self.db_config['host'],
                 port=self.db_config['port'],
                 user=self.db_config['user'],
                 password=self.db_config['password'],
                 dbname=self.db_config['dbname']
             )
-        except psycopg2.Error as e:
+        except psycopg.Error as e:
             print(f"Database connection error: {e}")
             raise
 
@@ -39,97 +39,80 @@ class Database:
             with open(sql_file_path, 'r') as sql_file:
                 sql_script = sql_file.read()
             print("SQL file read successfully.")
-            c = self.conn.cursor()
-            print("Executing SQL script...")
-            c.execute(sql_script)
+            with self.conn.cursor() as cur:
+                print("Executing SQL script...")
+                cur.execute(sql_script)
             self.conn.commit()
             print("Tables created successfully.")
-        except psycopg2.Error as e:
+        except psycopg.Error as e:
             print(f"Database error: {e}")
         except FileNotFoundError:
             print(f"Error: SQL file not found at {sql_file_path}")
 
     def get_all_stations(self):
         """Query all rows in the Station table"""
-        cur = self.conn.cursor()
-        cur.execute("SELECT Station_ID, geoBreite, geoLaenge, Stationsname FROM Station")
-        rows = cur.fetchall()
-        return rows
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT Station_ID, geoBreite, geoLaenge, Stationsname FROM Station")
+            rows = cur.fetchall()
+            return rows
 
     def get_all_parameters(self):
         """Query all rows in the Parameter table"""
-        cur = self.conn.cursor()
-        cur.execute("SELECT Parameter_Name, Parameter_Description, Unit FROM Parameter")
-        rows = cur.fetchall()
-        return rows
+        with self.conn.cursor() as cur:
+            cur.execute("SELECT Parameter_Name, Parameter_Description, Unit FROM Parameter")
+            rows = cur.fetchall()
+            return rows
 
     def get_weather_data(self, station_id: int, date: str):
         """
         Query weather data for a specific station and date.
-
-        :param station_id: The ID of the station.
-        :param date: The date in 'YYYY-MM-DD' format.
-        :return: A dictionary containing the weather data.
         """
-        cur = self.conn.cursor()
-        date_formated = date.replace("-", "")
-        cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM = %s", (station_id, date_formated))
-        row = cur.fetchone()
-        if row:
-            # get column names from cursor description
-            columns = [description[0] for description in cur.description]
-            return dict(zip(columns, row))
-        return None
+        with self.conn.cursor() as cur:
+            date_formated = date.replace("-", "")
+            cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM = %s", (station_id, date_formated))
+            row = cur.fetchone()
+            if row:
+                columns = [description[0] for description in cur.description]
+                return dict(zip(columns, row))
+            return None
 
     def get_monthly_weather_data(self, station_id: int, year: int, month: int):
         """
         Query weather data for a specific station, year, and month.
-
-        :param station_id: The ID of the station.
-        :param year: The year.
-        :param month: The month.
-        :return: A list of dictionaries containing the weather data.
         """
-        cur = self.conn.cursor()
-        date_pattern = f'{year}{month:02d}%'
-        cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
-        rows = cur.fetchall()
-        if rows:
-            columns = [description[0] for description in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
-        return []
+        with self.conn.cursor() as cur:
+            date_pattern = f'{year}{month:02d}%'
+            cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
+            rows = cur.fetchall()
+            if rows:
+                columns = [description[0] for description in cur.description]
+                return [dict(zip(columns, row)) for row in rows]
+            return []
 
     def get_yearly_weather_data(self, station_id: int, year: int):
         """
         Query weather data for a specific station and year.
-
-        :param station_id: The ID of the station.
-        :param year: The year.
-        :return: A list of dictionaries containing the weather data.
         """
-        cur = self.conn.cursor()
-        date_pattern = f'{year}%'
-        cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
-        rows = cur.fetchall()
-        if rows:
-            columns = [description[0] for description in cur.description]
-            return [dict(zip(columns, row)) for row in rows]
-        return []
+        with self.conn.cursor() as cur:
+            date_pattern = f'{year}%'
+            cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
+            rows = cur.fetchall()
+            if rows:
+                columns = [description[0] for description in cur.description]
+                return [dict(zip(columns, row)) for row in rows]
+            return []
 
     def insert_csv(self, csv_filepath, delimiter):
         """
         Reads data from a given CSV file path and inserts it into the
-        'Station' or 'Measurement' table. It determines the target table by
-        inspecting the CSV header.
+        'Station' or 'Measurement' table.
         """
         try:
             with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
                 header = [h.strip() for h in f.readline().split(delimiter)]
 
             if 'MESS_DATUM' in header and 'STATIONS_ID' in header:
-                table_name = 'Measurement'
-                
-                # Use pandas for efficient cleaning and preparation
+                table_name = 'measurement'
                 df = pd.read_csv(csv_filepath, delimiter=delimiter, na_values=str(self.na_value), encoding=self.file_encoding)
                 df.rename(columns=lambda c: c.strip(), inplace=True)
                 df.rename(columns={'STATIONS_ID': 'Station_ID'}, inplace=True)
@@ -137,31 +120,39 @@ class Database:
                 if 'eor' in df.columns:
                     df.drop(columns=['eor'], inplace=True)
 
+                if 'RSKF' in df.columns:
+                    df['RSKF'] = pd.to_numeric(df['RSKF'], errors='coerce').astype('Int64')
+                if 'QN_3' in df.columns:
+                    df['QN_3'] = pd.to_numeric(df['QN_3'], errors='coerce').astype('Int64')
+                if 'QN_4' in df.columns:
+                    df['QN_4'] = pd.to_numeric(df['QN_4'], errors='coerce').astype('Int64')
+
+                df.columns = df.columns.str.lower()
                 db_cols = [col for col in df.columns if col in [
-                    'Station_ID', 'MESS_DATUM', 'QN_3', 'FX', 'FM', 'QN_4', 'RSK', 'RSKF', 
-                    'SDK', 'SHK_TAG', 'NM', 'VPM', 'PM', 'TMK', 'UPM', 'TXK', 'TNK', 'TGK'
+                    'station_id', 'mess_datum', 'qn_3', 'fx', 'fm', 'qn_4', 'rsk', 'rskf',
+                    'sdk', 'shk_tag', 'nm', 'vpm', 'pm', 'tmk', 'upm', 'txk', 'tnk', 'tgk'
                 ]]
+
+                print(f"Columns to be inserted into {table_name}: {db_cols}")
                 
                 buffer = io.StringIO()
                 df[db_cols].to_csv(buffer, index=False, header=False, sep='\t', na_rep='\\N')
-                buffer.seek(0);
+                buffer.seek(0)
 
-                c = self.conn.cursor()
-                try:
-                    c.copy_from(buffer, table_name, sep='\t', null='\\N', columns=db_cols)
-                    self.conn.commit()
-                    print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} using COPY.")
-                except Exception as e:
-                    self.conn.rollback()
-                    print(f"Error using COPY for {os.path.basename(csv_filepath)}: {e}")
-                    # Fallback to row-by-row insert for debugging or handling specific errors
-                    # (You might want to remove this in production)
-                    print("Falling back to row-by-row insertion...")
-                    self._insert_csv_row_by_row(csv_filepath, delimiter)
-
+                with self.conn.cursor() as cur:
+                    try:
+                        print()
+                        with cur.copy(f"COPY {table_name} ({','.join(db_cols)}) FROM STDIN") as copy:
+                            copy.write(buffer.read())
+                        self.conn.commit()
+                        print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} using COPY.")
+                    except Exception as e:
+                        self.conn.rollback()
+                        print(f"Error using COPY for {os.path.basename(csv_filepath)}: {e}")
+                        print("Falling back to row-by-row insertion...")
+                        self._insert_csv_row_by_row(csv_filepath, delimiter)
 
             elif 'Stationsname' in header:
-                # Existing logic for station files (usually small, so row-by-row is fine)
                 self._insert_csv_row_by_row(csv_filepath, delimiter)
             else:
                 print(f"Error: Cannot determine table for CSV {csv_filepath}. Headers: {header}")
@@ -174,55 +165,43 @@ class Database:
 
     def _insert_csv_row_by_row(self, csv_filepath, delimiter):
         """
-        Private helper for original row-by-row insertion logic.
+        Private helper for row-by-row insertion logic.
         """
         with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
             reader = csv.reader(f, delimiter=delimiter)
             header = [h.strip() for h in next(reader)]
 
+        table_name, sql, eor_index = None, None, -1
         if 'MESS_DATUM' in header and 'STATIONS_ID' in header:
             table_name = 'Measurement'
-            db_header = [col if col != 'STATIONS_ID' else 'Station_ID' for col in header]
-            if 'eor' in db_header:
-                db_header.remove('eor')
-            
+            db_header = [col.replace('STATIONS_ID', 'Station_ID') for col in header if col != 'eor']
             columns = ', '.join(db_header)
             placeholders = ', '.join(['%s'] * len(db_header))
             sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-            
-            eor_index = header.index('eor') if 'eor' in header else -1
-
+            if 'eor' in header: eor_index = header.index('eor')
         elif 'Stationsname' in header:
             table_name = 'Station'
             columns = ', '.join(header)
             placeholders = ', '.join(['%s'] * len(header))
             sql = f"INSERT INTO Station ({columns}) VALUES ({placeholders})"
-            eor_index = -1 # No eor column in station files
         else:
-            return # Already handled in public method
+            return
 
         with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
             reader = csv.reader(f, delimiter=delimiter)
             next(reader)  # Skip header
-            c = self.conn.cursor()
-            for row in reader:
-                if not row: continue
-                if eor_index != -1:
-                    del row[eor_index]
-                
-                cleaned_row = []
-                for field in row:
-                    cleaned_field = field.strip()
-                    if cleaned_field == str(self.na_value) or cleaned_field == '':
-                        cleaned_row.append(None)
-                    else:
-                        cleaned_row.append(cleaned_field)
-                try:
-                    c.execute(sql, cleaned_row)
-                except psycopg2.IntegrityError as e:
-                    print(f"Skipping row due to IntegrityError: {e}")
-                    self.conn.rollback()
-            self.conn.commit()
+            with self.conn.cursor() as cur:
+                for row in reader:
+                    if not row: continue
+                    if eor_index != -1: del row[eor_index]
+                    
+                    cleaned_row = [None if (field.strip() == str(self.na_value) or field.strip() == '') else field.strip() for field in row]
+                    try:
+                        cur.execute(sql, cleaned_row)
+                    except psycopg.IntegrityError as e:
+                        print(f"Skipping row due to IntegrityError: {e}")
+                        self.conn.rollback()
+                self.conn.commit()
             print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} (row-by-row).")
 
     def insert_parameters(self, file_path):
@@ -230,41 +209,27 @@ class Database:
             with open(file_path, 'r', encoding=self.file_encoding) as f:
                 reader = csv.reader(f, delimiter=';')
                 header = [h.strip() for h in next(reader)]
+                name_index = header.index('Parameter')
+                description_index = header.index('Parameterbeschreibung')
+                unit_index = header.index('Einheit')
 
-                # Find the indices of the required columns
-                try:
-                    name_index = header.index('Parameter')
-                    description_index = header.index('Parameterbeschreibung')
-                    unit_index = header.index('Einheit')
-                except ValueError as e:
-                    print(f"Header missing in {file_path}: {e}")
-                    return
-
-                c = self.conn.cursor()
+            with self.conn.cursor() as cur:
                 for row in reader:
-                    if not row or len(row) <= max(name_index, description_index, unit_index):
-                        continue  # Skip empty or malformed rows
-
+                    if not row or len(row) <= max(name_index, description_index, unit_index): continue
+                    
                     parameter_name = row[name_index].strip()
-                    parameter_description = row[description_index].strip()
-                    unit = row[unit_index].strip()
-
-                    # Check if the parameter already exists
-                    c.execute("SELECT 1 FROM Parameter WHERE Parameter_Name = %s", (parameter_name,))
-                    if c.fetchone():
-                        continue  # Skip if parameter name already exists
+                    cur.execute("SELECT 1 FROM Parameter WHERE Parameter_Name = %s", (parameter_name,))
+                    if cur.fetchone(): continue
 
                     sql = "INSERT INTO Parameter (Parameter_Name, Parameter_Description, Unit) VALUES (%s, %s, %s)"
                     try:
-                        c.execute(sql, (parameter_name, parameter_description, unit))
-                    except psycopg2.IntegrityError as e:
+                        cur.execute(sql, (parameter_name, row[description_index].strip(), row[unit_index].strip()))
+                    except psycopg.IntegrityError as e:
                         print(f"Skipping row due to IntegrityError: {e}")
                         self.conn.rollback()
-
                 self.conn.commit()
-                print(f"Data from {file_path} successfully inserted into Parameter.")
-
-        except FileNotFoundError:
-            print(f"Error: {file_path} not found.")
+            print(f"Data from {file_path} successfully inserted into Parameter.")
+        except (FileNotFoundError, ValueError) as e:
+            print(f"Error processing parameter file {file_path}: {e}")
         except Exception as e:
-            print(f"An error occurred while processing {file_path}: {e}")
+            print(f"An unexpected error occurred: {e}")

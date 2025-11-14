@@ -9,110 +9,324 @@
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
           crossorigin=""/>
     <style>
-        #map { height: 400px; }
+        :root {
+            --primary-color: #2563eb;
+            --secondary-color: #3b82f6;
+            --accent-color: #60a5fa;
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --card-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            --card-hover-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .hero-section {
+            background: var(--bg-gradient);
+            color: white;
+            padding: 4rem 0 3rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-title {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .hero-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.95;
+        }
+
+        #map {
+            height: 500px;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            border: 4px solid white;
+            margin-bottom: 4rem;
+        }
+
+        .section-card {
+            background: white;
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            box-shadow: var(--card-shadow);
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .section-card:hover {
+            box-shadow: var(--card-hover-shadow);
+            transform: translateY(-5px);
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 2rem;
+            background: var(--bg-gradient);
+            border-radius: 2px;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-control, .form-select {
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--secondary-color);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--bg-gradient);
+            border: none;
+            border-radius: 12px;
+            padding: 0.875rem 2rem;
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+            border-width: 0.3rem;
+        }
+
+        .loading-text {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+            color: #64748b;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            border: 2px solid #e2e8f0;
+        }
+
+        .result-card .card-header {
+            background: var(--bg-gradient);
+            color: white;
+            padding: 1.25rem;
+            font-weight: 600;
+            font-size: 1.15rem;
+        }
+
+        .list-group-item {
+            border: none;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1rem 1.5rem;
+            transition: background 0.2s ease;
+        }
+
+        .list-group-item:hover {
+            background: #f8fafc;
+        }
+
+        .list-group-item:last-child {
+            border-bottom: none;
+        }
+
+        .alert {
+            border-radius: 12px;
+            border: none;
+            padding: 1rem 1.5rem;
+        }
+
+        .alert-success {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            color: #065f46;
+        }
+
+        .alert-danger {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            color: #991b1b;
+        }
+
+        .plot-img {
+            border-radius: 12px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2rem;
+            }
+
+            #map {
+                height: 350px;
+            }
+
+            .section-card {
+                padding: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
-        <div id="map" class="mb-4"></div>
-
-        <h1 class="mb-4">DWD Weather Analysis</h1>
-        <form id="weather-form" class="mb-4">
-            <div class="mb-3">
-                <label for="location" class="form-label">Location (Address in Germany)</label>
-                <input type="text" class="form-control" id="location" name="location" required>
-            </div>
-            <div class="mb-3">
-                <label for="date" class="form-label">Date</label>
-                <input type="date" class="form-control" id="date" name="date" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Get Weather</button>
-        </form>
-
-        <div id="loading-spinner" class="text-center d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p>Fetching weather data...</p>
-        </div>
-
-        <div id="weather-results" class="mt-4">
-            <!-- Weather data will be displayed here -->
-        </div>
-
-        <hr class="my-5">
-
-        <h2 class="mb-4">Data Plot</h2>
-        <form id="plot-form" class="mb-4">
-            <div class="mb-3">
-                <label for="plot-location" class="form-label">Location (Address in Germany)</label>
-                <input type="text" class="form-control" id="plot-location" name="location" required>
-            </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="start-date" class="form-label">Start Date</label>
-                    <input type="date" class="form-control" id="start-date" name="start_date" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="end-date" class="form-label">End Date</label>
-                    <input type="date" class="form-control" id="end-date" name="end_date" required>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label for="parameter" class="form-label">Parameter</label>
-                <select class="form-select" id="parameter" name="parameter" required>
-                    <!-- Options will be populated dynamically -->
-                </select>
-            </div>
-            <button type="submit" class="btn btn-primary">Generate Plot</button>
-        </form>
-
-        <div id="plot-loading-spinner" class="text-center d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p>Generating plot...</p>
-        </div>
-
-        <div id="plot-results" class="mt-4">
-            <!-- Plot will be displayed here -->
-        </div>
-
-        <hr class="my-5">
-
-        <h2 class="mb-4">Export Data to CSV</h2>
-        <form id="csv-form" class="mb-4">
-            <div class="mb-3">
-                <label for="csv-location" class="form-label">Location (Address in Germany)</label>
-                <input type="text" class="form-control" id="csv-location" name="location" required>
-            </div>
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label for="csv-start-date" class="form-label">Start Date</label>
-                    <input type="date" class="form-control" id="csv-start-date" name="start_date" required>
-                </div>
-                <div class="col-md-6 mb-3">
-                    <label for="csv-end-date" class="form-label">End Date</label>
-                    <input type="date" class="form-control" id="csv-end-date" name="end_date" required>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-primary">Export CSV</button>
-        </form>
-
-        <div id="csv-loading-spinner" class="text-center d-none">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p>Exporting data...</p>
-        </div>
-
-        <div id="csv-results" class="mt-4">
-            <!-- CSV export status will be displayed here -->
+    <div class="hero-section">
+        <div class="container text-center">
+            <h1 class="hero-title">🌤️ DWD Weather Analysis</h1>
+            <p class="hero-subtitle">Professional weather data visualization and analysis for Germany</p>
         </div>
     </div>
 
+    <div class="container">
+        <div id="map"></div>
+
+        <div class="section-card">
+            <h2 class="section-title">Weather Query</h2>
+            <form id="weather-form">
+                <div class="mb-3">
+                    <label for="location" class="form-label">Location (Address in Germany)</label>
+                    <input type="text" class="form-control" id="location" name="location" placeholder="e.g., Berlin, Hamburg, Munich" required>
+                </div>
+                <div class="mb-4">
+                    <label for="date" class="form-label">Date</label>
+                    <input type="date" class="form-control" id="date" name="date" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Get Weather Data</button>
+            </form>
+
+            <div id="loading-spinner" class="text-center d-none mt-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Fetching weather data...</p>
+            </div>
+
+            <div id="weather-results" class="mt-4"></div>
+        </div>
+
+        <div class="section-card">
+            <h2 class="section-title">Data Visualization</h2>
+            <form id="plot-form">
+                <div class="mb-3">
+                    <label for="plot-location" class="form-label">Location (Address in Germany)</label>
+                    <input type="text" class="form-control" id="plot-location" name="location" placeholder="e.g., Berlin, Hamburg, Munich" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="start-date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start-date" name="start_date" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="end-date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end-date" name="end_date" required>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label for="parameter" class="form-label">Parameter</label>
+                    <select class="form-select" id="parameter" name="parameter" required>
+                        <option value="">Select a parameter...</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Generate Plot</button>
+            </form>
+
+            <div id="plot-loading-spinner" class="text-center d-none mt-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Generating plot...</p>
+            </div>
+
+            <div id="plot-results" class="mt-4"></div>
+        </div>
+
+        <div class="section-card">
+            <h2 class="section-title">Export to CSV</h2>
+            <form id="csv-form">
+                <div class="mb-3">
+                    <label for="csv-location" class="form-label">Location (Address in Germany)</label>
+                    <input type="text" class="form-control" id="csv-location" name="location" placeholder="e.g., Berlin, Hamburg, Munich" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="csv-start-date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="csv-start-date" name="start_date" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="csv-end-date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="csv-end-date" name="end_date" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Export CSV</button>
+            </form>
+
+            <div id="csv-loading-spinner" class="text-center d-none mt-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="loading-text">Exporting data...</p>
+            </div>
+
+            <div id="csv-results" class="mt-4"></div>
+        </div>
+    </div>
+
+    <div style="height: 80px;"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
     <script>
         document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize map
+            var map = L.map('map').setView([51.1657, 10.4515], 6);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+
+            fetch('/stations')
+                .then(response => response.json())
+                .then(stations => {
+                    stations.forEach(station => {
+                        L.marker([station[1], station[2]]).addTo(map)
+                            .bindPopup(station[3]);
+                    });
+                });
+
+            // Load parameters
             const parameterSelect = document.getElementById('parameter');
 
             try {
@@ -135,15 +349,15 @@
         });
 
         document.getElementById('weather-form').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Prevent default form submission
+            event.preventDefault();
 
             const location = document.getElementById('location').value;
             const date = document.getElementById('date').value;
             const weatherResultsDiv = document.getElementById('weather-results');
             const loadingSpinner = document.getElementById('loading-spinner');
 
-            weatherResultsDiv.innerHTML = ''; // Clear previous results
-            loadingSpinner.classList.remove('d-none'); // Show loading spinner
+            weatherResultsDiv.innerHTML = '';
+            loadingSpinner.classList.remove('d-none');
 
             const formData = new FormData();
             formData.append('location', location);
@@ -159,7 +373,7 @@
 
                 if (response.ok) {
                     let html = `
-                        <div class="card">
+                        <div class="result-card">
                             <div class="card-header">
                                 Weather Data for ${location} on ${date}
                             </div>
@@ -182,12 +396,12 @@
                 console.error('Error:', error);
                 weatherResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
             } finally {
-                loadingSpinner.classList.add('d-none'); // Hide loading spinner
+                loadingSpinner.classList.add('d-none');
             }
         });
 
         document.getElementById('plot-form').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Prevent default form submission
+            event.preventDefault();
 
             const location = document.getElementById('plot-location').value;
             const startDate = document.getElementById('start-date').value;
@@ -196,8 +410,8 @@
             const plotResultsDiv = document.getElementById('plot-results');
             const plotLoadingSpinner = document.getElementById('plot-loading-spinner');
 
-            plotResultsDiv.innerHTML = ''; // Clear previous results
-            plotLoadingSpinner.classList.remove('d-none'); // Show loading spinner
+            plotResultsDiv.innerHTML = '';
+            plotLoadingSpinner.classList.remove('d-none');
 
             const formData = new FormData();
             formData.append('location', location);
@@ -215,12 +429,12 @@
 
                 if (response.ok) {
                     plotResultsDiv.innerHTML = `
-                        <div class="card">
+                        <div class="result-card">
                             <div class="card-header">
                                 ${parameter} Plot for ${location}
                             </div>
-                            <div class="card-body text-center">
-                                <img src="data:image/png;base64,${data.plot}" class="img-fluid" alt="${parameter} Plot">
+                            <div class="card-body text-center p-4">
+                                <img src="data:image/png;base64,${data.plot}" class="plot-img" alt="${parameter} Plot">
                             </div>
                         </div>
                     `;
@@ -231,12 +445,12 @@
                 console.error('Error:', error);
                 plotResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
             } finally {
-                plotLoadingSpinner.classList.add('d-none'); // Hide loading spinner
+                plotLoadingSpinner.classList.add('d-none');
             }
         });
 
         document.getElementById('csv-form').addEventListener('submit', async function(event) {
-            event.preventDefault(); // Prevent default form submission
+            event.preventDefault();
 
             const location = document.getElementById('csv-location').value;
             const startDate = document.getElementById('csv-start-date').value;
@@ -244,8 +458,8 @@
             const csvResultsDiv = document.getElementById('csv-results');
             const csvLoadingSpinner = document.getElementById('csv-loading-spinner');
 
-            csvResultsDiv.innerHTML = ''; // Clear previous results
-            csvLoadingSpinner.classList.remove('d-none'); // Show loading spinner
+            csvResultsDiv.innerHTML = '';
+            csvLoadingSpinner.classList.remove('d-none');
 
             const formData = new FormData();
             formData.append('location', location);
@@ -268,7 +482,7 @@
                     a.click();
                     a.remove();
                     window.URL.revokeObjectURL(url);
-                    csvResultsDiv.innerHTML = `<div class="alert alert-success" role="alert">CSV file downloaded successfully.</div>`;
+                    csvResultsDiv.innerHTML = `<div class="alert alert-success" role="alert">✓ CSV file downloaded successfully.</div>`;
                 } else {
                     const data = await response.json();
                     csvResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">${data.error || 'An error occurred.'}</div>`;
@@ -277,30 +491,8 @@
                 console.error('Error:', error);
                 csvResultsDiv.innerHTML = `<div class="alert alert-danger" role="alert">An unexpected error occurred.</div>`;
             } finally {
-                csvLoadingSpinner.classList.add('d-none'); // Hide loading spinner
+                csvLoadingSpinner.classList.add('d-none');
             }
-        });
-    </script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin=""></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            var map = L.map('map').setView([51.1657, 10.4515], 6); // Centered on Germany
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            fetch('/stations')
-                .then(response => response.json())
-                .then(stations => {
-                    stations.forEach(station => {
-                        L.marker([station[1], station[2]]).addTo(map)
-                            .bindPopup(station[3]);
-                    });
-                });
         });
     </script>
 </body>
