@@ -37,168 +37,194 @@
             margin-top: 2rem;
             box-shadow: var(--card-shadow);
         }
-        .btn-toggle-stations {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-        }
-    </style>
-</head>
-<body>
-    <div class="hero-section">
-        <div class="container text-center">
-            <h1>DWD Weather Analysis</h1>
-            <p>Select a station to see available data</p>
-        </div>
-    </div>
-
-    <div class="container">
-        <div class="position-relative">
-            <div id="map"></div>
-            <button id="toggle-stations" class="btn btn-primary btn-sm btn-toggle-stations">Toggle Stations</button>
-        </div>
-
-        <div class="section-card">
-            <h2>Selection</h2>
-            <div class="row">
-                <div class="col-md-6">
-                    <label for="location" class="form-label">Address</label>
-                    <input type="text" class="form-control" id="location" placeholder="Enter address to find nearest station">
-                </div>
-                <div class="col-md-6" id="station-info">
-                    <p>No station selected. Click on a station, a point on the map, or enter an address.</p>
+                .btn-toggle-stations {
+                    position: absolute;
+                    top: 10px;
+                    right: 10px;
+                    z-index: 1000;
+                }
+                .radius-slider {
+                    position: absolute;
+                    top: 50px;
+                    right: 10px;
+                    z-index: 1000;
+                    background: white;
+                    padding: 10px;
+                    border-radius: 5px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="hero-section">
+                <div class="container text-center">
+                    <h1>DWD Weather Analysis</h1>
+                    <p>Select a station to see available data</p>
                 </div>
             </div>
-        </div>
-
-        <div class="section-card d-none" id="calendar-container">
-            <h2>Available Dates</h2>
-            <div id="calendar"></div>
-        </div>
-    </div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vanilla-js-calendar@1.6.1/build/vanilla-js-calendar.min.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            const map = L.map('map').setView([51.1657, 10.4515], 6);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap contributors'
-            }).addTo(map);
-
-            let stations = [];
-            const stationMarkers = L.layerGroup().addTo(map);
-            let circle = null;
-            let calendar = null;
-
-            // Fetch stations and add to map
-            fetch('/stations')
-                .then(response => response.json())
-                .then(data => {
-                    stations = data;
-                    stations.forEach(station => {
-                        const marker = L.marker([station[1], station[2]])
-                            .bindPopup(`<b>${station[3]}</b><br><button class="btn btn-sm btn-primary select-station-btn" data-station-id="${station[0]}">Select</button>`);
-                        stationMarkers.addLayer(marker);
-                    });
-                });
-
-            // Toggle stations visibility
-            document.getElementById('toggle-stations').addEventListener('click', () => {
-                if (map.hasLayer(stationMarkers)) {
-                    map.removeLayer(stationMarkers);
-                } else {
-                    map.addLayer(stationMarkers);
-                }
-            });
-
-            // Handle map click
-            map.on('click', function(e) {
-                if (circle) {
-                    map.removeLayer(circle);
-                }
-                circle = L.circle(e.latlng, {
-                    radius: 10000, // 10km
-                    color: 'blue',
-                    fillColor: '#3388ff',
-                    fillOpacity: 0.2
-                }).addTo(map);
-
-                // Find stations within circle
-                const stationsInCircle = stations.filter(station => {
-                    const stationLatLng = L.latLng(station[1], station[2]);
-                    return e.latlng.distanceTo(stationLatLng) < 10000;
-                });
-
-                displayStationInfo(stationsInCircle.length > 0 ? stationsInCircle[0] : null);
-            });
-
-            // Handle station selection from popup
-            map.on('popupopen', function (e) {
-                const btn = e.popup._contentNode.querySelector('.select-station-btn');
-                if (btn) {
-                    btn.addEventListener('click', function () {
-                        const stationId = this.getAttribute('data-station-id');
-                        const station = stations.find(s => s[0] == stationId);
-                        displayStationInfo(station);
-                        map.closePopup();
-                    });
-                }
-            });
-            
-            // Handle address input
-            document.getElementById('location').addEventListener('change', function() {
-                // This would require a geocoding service to get lat/lng from address
-                // For now, we just find the closest station to a hardcoded location for demo
-                const berlin = [52.5200, 13.4050];
-                let closestStation = null;
-                let minDistance = Infinity;
-
-                stations.forEach(station => {
-                    const stationLatLng = L.latLng(station[1], station[2]);
-                    const distance = L.latLng(berlin).distanceTo(stationLatLng);
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestStation = station;
-                    }
-                });
-                displayStationInfo(closestStation);
-            });
-
-            function displayStationInfo(station) {
-                const stationInfoDiv = document.getElementById('station-info');
-                if (station) {
-                    stationInfoDiv.innerHTML = `<p><b>Selected Station:</b> ${station[3]} (ID: ${station[0]})</p>`;
-                    fetch(`/station_dates?station_id=${station[0]}`)
+        
+            <div class="container">
+                <div class="position-relative">
+                    <div id="map"></div>
+                    <button id="toggle-stations" class="btn btn-primary btn-sm btn-toggle-stations">Toggle Stations</button>
+                    <div class="radius-slider">
+                        <label for="radius" class="form-label">Radius: <span id="radius-value">10</span> km</label>
+                        <input type="range" class="form-range" min="1" max="100" id="radius">
+                    </div>
+                </div>
+        
+                <div class="section-card">
+                    <h2>Selection</h2>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="location" class="form-label">Address</label>
+                            <input type="text" class="form-control" id="location" placeholder="Enter address to find nearest station">
+                        </div>
+                        <div class="col-md-6" id="station-info">
+                            <p>No station selected. Click on a station, a point on the map, or enter an address.</p>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="section-card d-none" id="calendar-container">
+                    <h2>Available Dates</h2>
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/vanilla-js-calendar@1.6.1/build/vanilla-js-calendar.min.js"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const map = L.map('map').setView([51.1657, 10.4515], 6);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 19,
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(map);
+        
+                    let stations = [];
+                    const stationMarkers = L.layerGroup().addTo(map);
+                    let circle = null;
+                    let calendar = null;
+                    const radiusSlider = document.getElementById('radius');
+                    const radiusValue = document.getElementById('radius-value');
+        
+                    // Fetch stations and add to map
+                    fetch('/stations')
                         .then(response => response.json())
                         .then(data => {
-                            if (data) {
-                                document.getElementById('calendar-container').classList.remove('d-none');
-                                if (calendar) {
-                                    calendar.destroy();
-                                }
-                                calendar = new VanillaCalendar('#calendar', {
-                                    settings: {
-                                        range: {
-                                            min: data.von_datum,
-                                            max: data.bis_datum,
-                                        },
-                                        selection: {
-                                            day: 'multiple-ranged',
-                                        },
-                                    },
-                                });
-                                calendar.init();
+                            stations = data;
+                            stations.forEach(station => {
+                                const marker = L.marker([station[1], station[2]])
+                                    .bindPopup(`<b>${station[3]}</b><br><button class="btn btn-sm btn-primary select-station-btn" data-station-id="${station[0]}">Select</button>`);
+                                stationMarkers.addLayer(marker);
+                            });
+                        });
+        
+                    // Toggle stations visibility
+                    document.getElementById('toggle-stations').addEventListener('click', () => {
+                        if (map.hasLayer(stationMarkers)) {
+                            map.removeLayer(stationMarkers);
+                        } else {
+                            map.addLayer(stationMarkers);
+                        }
+                    });
+        
+                    function updateCircle() {
+                        if (!circle) return;
+                        const radius = radiusSlider.value * 1000;
+                        circle.setRadius(radius);
+                        radiusValue.textContent = radiusSlider.value;
+        
+                        const stationsInCircle = stations.filter(station => {
+                            const stationLatLng = L.latLng(station[1], station[2]);
+                            return circle.getLatLng().distanceTo(stationLatLng) < radius;
+                        });
+        
+                        displayStationInfo(stationsInCircle.length > 0 ? stationsInCircle[0] : null);
+                    }
+        
+                    radiusSlider.addEventListener('input', updateCircle);
+        
+                    // Handle map click
+                    map.on('click', function(e) {
+                        if (circle) {
+                            circle.setLatLng(e.latlng);
+                        } else {
+                            circle = L.circle(e.latlng, {
+                                radius: radiusSlider.value * 1000,
+                                color: 'blue',
+                                fillColor: '#3388ff',
+                                fillOpacity: 0.2
+                            }).addTo(map);
+                        }
+                        updateCircle();
+                    });
+        
+                    // Handle station selection from popup
+                    map.on('popupopen', function (e) {
+                        const btn = e.popup._contentNode.querySelector('.select-station-btn');
+                        if (btn) {
+                            btn.addEventListener('click', function () {
+                                const stationId = this.getAttribute('data-station-id');
+                                const station = stations.find(s => s[0] == stationId);
+                                displayStationInfo(station);
+                                map.closePopup();
+                            });
+                        }
+                    });
+                    
+                    // Handle address input
+                    document.getElementById('location').addEventListener('change', function() {
+                        // This would require a geocoding service to get lat/lng from address
+                        // For now, we just find the closest station to a hardcoded location for demo
+                        const berlin = [52.5200, 13.4050];
+                        let closestStation = null;
+                        let minDistance = Infinity;
+        
+                        stations.forEach(station => {
+                            const stationLatLng = L.latLng(station[1], station[2]);
+                            const distance = L.latLng(berlin).distanceTo(stationLatLng);
+                            if (distance < minDistance) {
+                                minDistance = distance;
+                                closestStation = station;
                             }
                         });
-                } else {
-                    stationInfoDiv.innerHTML = '<p>No station found at this location.</p>';
-                    document.getElementById('calendar-container').classList.add('d-none');
-                }
-            }
-        });
-    </script>
-</body>
-</html>
+                        displayStationInfo(closestStation);
+                    });
+        
+                    function displayStationInfo(station) {
+                        const stationInfoDiv = document.getElementById('station-info');
+                        if (station) {
+                            stationInfoDiv.innerHTML = `<p><b>Selected Station:</b> ${station[3]} (ID: ${station[0]})</p>`;
+                            fetch(`/station_dates?station_id=${station[0]}`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data) {
+                                        document.getElementById('calendar-container').classList.remove('d-none');
+                                        if (calendar) {
+                                            calendar.destroy();
+                                        }
+                                        calendar = new VanillaCalendar('#calendar', {
+                                            settings: {
+                                                range: {
+                                                    min: data.von_datum,
+                                                    max: data.bis_datum,
+                                                },
+                                                selection: {
+                                                    day: 'multiple-ranged',
+                                                },
+                                            },
+                                        });
+                                        calendar.init();
+                                    }
+                                });
+                        } else {
+                            stationInfoDiv.innerHTML = '<p>No station found at this location.</p>';
+                            document.getElementById('calendar-container').classList.add('d-none');
+                        }
+                    }
+                });
+            </script>
+        </body>
+        </html>
+        
