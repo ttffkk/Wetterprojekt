@@ -175,21 +175,32 @@
                     
                     // Handle address input
                     document.getElementById('location').addEventListener('change', function() {
-                        // This would require a geocoding service to get lat/lng from address
-                        // For now, we just find the closest station to a hardcoded location for demo
-                        const berlin = [52.5200, 13.4050];
-                        let closestStation = null;
-                        let minDistance = Infinity;
-        
-                        stations.forEach(station => {
-                            const stationLatLng = L.latLng(station[1], station[2]);
-                            const distance = L.latLng(berlin).distanceTo(stationLatLng);
-                            if (distance < minDistance) {
-                                minDistance = distance;
-                                closestStation = station;
-                            }
-                        });
-                        displayStationInfo(closestStation);
+                        const address = this.value;
+                        if (!address) return;
+
+                        fetch(`/geocode?address=${encodeURIComponent(address)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.error) {
+                                    alert(data.error);
+                                    return;
+                                }
+
+                                const latLng = [data.latitude, data.longitude];
+                                map.setView(latLng, 10);
+                                if (circle) {
+                                    circle.setLatLng(latLng);
+                                } else {
+                                    circle = L.circle(latLng, {
+                                        radius: radiusSlider.value * 1000,
+                                        color: 'blue',
+                                        fillColor: '#3388ff',
+                                        fillOpacity: 0.2
+                                    }).addTo(map);
+                                }
+                                L.marker(latLng).addTo(map).bindPopup(address).openPopup();
+                                updateCircle();
+                            });
                     });
         
                     function displayStationInfo(station) {

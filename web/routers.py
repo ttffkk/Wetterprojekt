@@ -64,6 +64,19 @@ async def get_station_dates(station_id: int, db: AsyncDatabase = Depends(get_db)
     date_range = await db.get_station_date_range(station_id)
     return JSONResponse(content=date_range)
 
+@router.get("/geocode")
+async def geocode(address: str, db: AsyncDatabase = Depends(get_db)):
+    """Geocode an address to get its latitude and longitude."""
+    analysis = Analysis(db)
+    try:
+        location = analysis.geolocator.geocode(address)
+        if location:
+            return JSONResponse(content={'latitude': location.latitude, 'longitude': location.longitude})
+        else:
+            return JSONResponse(content={'error': 'Address not found'}, status_code=404)
+    except Exception as e:
+        return JSONResponse(content={'error': str(e)}, status_code=500)
+
 @router.post("/plot_data")
 async def plot_data(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), parameter: str = Form(...), db: AsyncDatabase = Depends(get_db)):
     """
