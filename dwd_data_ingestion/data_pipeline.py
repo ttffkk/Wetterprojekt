@@ -2,23 +2,25 @@ import os
 import re
 import zipfile
 import time
+import logging
 
 import pandas as pd
 import requests
-import typer
 import psycopg
 
 from .database import Database
 
 
 class DataIngestionPipeline:
-    def __init__(self, config):
+    def __init__(self, config, logger):
         self.config = config
         self.db = None
+        self.logger = logger
 
     def run(self):
         """Command to import the weather data."""
-        time.sleep(10)
+        start_time = time.time()
+        
         source_config = self.config['source']
         patterns_config = source_config['patterns']
         file_properties_config = source_config['file_properties']
@@ -26,16 +28,17 @@ class DataIngestionPipeline:
         db_config = self.config['database']
 
         # 0. Create the database and tables
-        self.db = Database(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'])
+        self.db = Database(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'], self.logger)
         self.db.create_connection()
         self.db.create_tables(db_config['sql_file_path'])
 
         # 1. Instantiate the classes
-        downloader = Downloader(url=source_config['url'], download_dir=paths_config['download_dir'])
-        processor = DataProcessor(paths_config['download_dir'], paths_config['extract_dir'], file_properties_config['file_encoding'], file_properties_config['na_value'])
-        csv_importer = CsvImporter(self.db)
-        station_importer = StationImporter(self.db.conn)
-        parameter_importer = ParameterImporter(self.db)
+        downloader = Downloader(url=source_config['url'], download_dir=paths_config['download_dir'], logger=self.logger)
+        processor = DataProcessor(paths_config['download_dir'], paths_config['extract_dir'], file_properties_config['file_encoding'], file_properties_config['na_value'], self.logger)
+        csv_importer = CsvImporter(self.db, self.logger)
+        station_importer = StationImporter(self.db.conn, self.logger)
+
+        downloaded_files_count = 0
 
         # 2. Download and import station data
         station_file_path = downloader.download_station_file(source_config['station_meta_url'])
@@ -47,7 +50,9 @@ class DataIngestionPipeline:
 
         # 4. Process each file one by one
         for url in file_urls:
-            zip_file_path = downloader.download_file(url)
+            zip_file_path, is_newly_downloaded = downloader.download_file(url)
+            if is_newly_downloaded:
+                downloaded_files_count += 1
             if zip_file_path:
                 csv_file_path = processor.process_file(
                     zip_file_path,
@@ -60,39 +65,28 @@ class DataIngestionPipeline:
                     os.remove(csv_file_path)
                 os.remove(zip_file_path)
 
-        # 5. Import parameter descriptions
-        extract_dir = paths_config['extract_dir']
-        metadata_file = None
-        for root, dirs, files in os.walk(extract_dir):
-            for file in files:
-                if file.startswith('Metadaten_Parameter'):
-                    metadata_file = os.path.join(root, file)
-                    break
-            if metadata_file:
-                break
-        
-        if metadata_file:
-            parameter_importer.import_parameters(metadata_file)
-        else:
-            typer.echo("Metadata file for parameters not found. Please make sure at least one data archive is extracted.")
-
         self.db.close_connection()
+
+        end_time = time.time()
+        total_time = end_time - start_time
+        self.logger.info(f"Ingestion process finished. Downloaded and processed {downloaded_files_count} new files in {total_time:.2f} seconds.")
 
 class Downloader:
     """Handles downloading data files from a given URL."""
-    def __init__(self, url, download_dir):
+    def __init__(self, url, download_dir, logger):
         self.url = url
         self.download_dir = download_dir
+        self.logger = logger
 
     def get_file_urls(self, pattern):
         """Gets all the file urls from the server that match the pattern."""
-        print(f"Fetching file list from {self.url}...")
+        self.logger.info(f"Fetching file list from {self.url}...")
         response = requests.get(self.url)
         response.raise_for_status()
 
         file_names = re.findall(pattern, response.text)
         file_urls = [self.url + file_name for file_name in file_names]
-        print(f"Found {len(file_urls)} files matching the pattern.")
+        self.logger.info(f"Found {len(file_urls)} files matching the pattern.")
         return file_urls
 
     def download_file(self, url):
@@ -104,76 +98,60 @@ class Downloader:
         local_path = os.path.join(self.download_dir, file_name)
 
         if os.path.exists(local_path):
-            print(f"File {file_name} already exists. Skipping.")
-            return local_path
+            self.logger.info(f"File {file_name} already exists. Skipping.")
+            return local_path, False
 
-        print(f"Downloading {url}...")
+        self.logger.info(f"Downloading {url}...")
         try:
             response = requests.get(url, stream=True)
             response.raise_for_status()
             with open(local_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     f.write(chunk)
-            print(f"Successfully downloaded {file_name}")
-            return local_path
+            self.logger.info(f"Successfully downloaded {file_name}")
+            return local_path, True
         except requests.exceptions.RequestException as e:
-            print(f"Failed to download {url}. Error: {e}")
-            return None
+            self.logger.error(f"Failed to download {url}. Error: {e}")
+            return None, False
             
     def download_station_file(self, station_url):
         """Downloads the station description file."""
-        print("Downloading station description file...")
-        return self.download_file(station_url)
+        self.logger.info("Downloading station description file...")
+        path, _ = self.download_file(station_url)
+        return path
 
 class CsvImporter:
-    def __init__(self, db: Database):
+    def __init__(self, db: Database, logger):
         self.db = db
+        self.logger = logger
 
     def import_file(self, file_path, delimiter):
         """
         Uses an existing database connection to insert a single CSV file.
         """
-        print("--- Running CSV Importer ---")
+        self.logger.info("--- Running CSV Importer ---")
         if not self.db.conn:
-            print("Database connection is not available. Aborting import.")
+            self.logger.error("Database connection is not available. Aborting import.")
             return
 
         try:
-            print(f"Importing '{os.path.basename(file_path)}'...")
+            self.logger.info(f"Importing '{os.path.basename(file_path)}'...")
             self.db.insert_csv(file_path, delimiter)
-            print("CSV import process finished.")
+            self.logger.info("CSV import process finished.")
 
         except Exception as e:
-            print(f"An unexpected error occurred during CSV import: {e}")
-
-
-class ParameterImporter:
-    def __init__(self, db: Database):
-        self.db = db
-
-    def import_parameters(self, file_path):
-        print("--- Running Parameter Importer ---")
-        if not self.db.conn:
-            print("Database connection is not available. Aborting import.")
-            return
-
-        try:
-            print(f"Importing '{os.path.basename(file_path)}'...")
-            self.db.insert_parameters(file_path)
-            print("Parameter import process finished.")
-
-        except Exception as e:
-            print(f"An unexpected error occurred during parameter import: {e}")
+            self.logger.error(f"An unexpected error occurred during CSV import: {e}")
 
 class StationImporter:
-    def __init__(self, db_connection):
+    def __init__(self, db_connection, logger):
         self.db_connection = db_connection
+        self.logger = logger
 
     def import_stations(self, file_path):
         """
         Imports station data from the description file into the database.
         """
-        print(f"Importing stations from {file_path}...")
+        self.logger.info(f"Importing stations from {file_path}...")
         
         # Define column widths and names
         col_specs = [
@@ -218,23 +196,24 @@ class StationImporter:
                             (row['Station_ID'], row['von_datum'], row['bis_datum'], row['Stattionhoehe'], row['geoBreite'], row['geoLaenge'], row['Stationsname'], row['Bundesland'])
                         )
                     except Exception as e:
-                        print(f"Skipping duplicate or invalid station {row['Station_ID']}: {e}")
+                        self.logger.warning(f"Skipping duplicate or invalid station {row['Station_ID']}: {e}")
             
             self.db_connection.commit()
-            print(f"Successfully imported {len(df)} stations.")
+            self.logger.info(f"Successfully imported {len(df)} stations.")
 
         except FileNotFoundError:
-            print(f"Error: Station description file not found at {file_path}")
+            self.logger.error(f"Error: Station description file not found at {file_path}")
         except Exception as e:
-            print(f"An error occurred during station import: {e}")
+            self.logger.error(f"An error occurred during station import: {e}")
 
 class DataProcessor:
     """Handles unzipping, filtering, and parsing of data files."""
-    def __init__(self, download_dir, extract_dir, file_encoding, na_value):
+    def __init__(self, download_dir, extract_dir, file_encoding, na_value, logger):
         self.download_dir = download_dir
         self.extract_dir = extract_dir
         self.file_encoding = file_encoding
         self.na_value = na_value
+        self.logger = logger
 
     def process_file(self, zip_file_path, file_pattern_to_extract, header_keyword, delimiter):
         """Processes a single zip file: unzips, parses, and renames to CSV."""
@@ -242,9 +221,12 @@ class DataProcessor:
             os.makedirs(self.extract_dir)
 
         file_name = os.path.basename(zip_file_path)
-        print(f"Processing {file_name}...")
+        self.logger.info(f"Processing {file_name}...")
         try:
             with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+                zip_ref.extractall(self.extract_dir)
+                self.logger.info(f"  - Extracted all files from {file_name}")
+
                 product_file = None
                 for file_in_zip in zip_ref.namelist():
                     if file_pattern_to_extract in file_in_zip:
@@ -252,15 +234,14 @@ class DataProcessor:
                         break
                 
                 if product_file:
-                    extracted_file_path = zip_ref.extract(product_file, self.extract_dir)
-                    print(f"  - Extracted: {product_file}")
+                    extracted_file_path = os.path.join(self.extract_dir, product_file)
                 else:
-                    print(f"  - Warning: No file matching '{file_pattern_to_extract}' found in {file_name}")
+                    self.logger.warning(f"  - Warning: No file matching '{file_pattern_to_extract}' found in {file_name}")
                     return None
 
             header_line_index = self._find_header_line(extracted_file_path, header_keyword)
             if header_line_index is None:
-                print(f"  - Warning: Could not find header row in {os.path.basename(extracted_file_path)}. Skipping.")
+                self.logger.warning(f"  - Warning: Could not find header row in {os.path.basename(extracted_file_path)}. Skipping.")
                 return None
 
             df = pd.read_csv(
@@ -276,7 +257,7 @@ class DataProcessor:
             if extracted_file_path.endswith('.txt'):
                 new_file_path = os.path.splitext(extracted_file_path)[0] + ".csv"
                 df.to_csv(new_file_path, index=False, sep=delimiter)
-                print(f"  - Renamed to {os.path.basename(new_file_path)}")
+                self.logger.info(f"  - Renamed to {os.path.basename(new_file_path)}")
                 os.remove(extracted_file_path)
                 return new_file_path
             else:
@@ -284,13 +265,13 @@ class DataProcessor:
                 return extracted_file_path
 
         except zipfile.BadZipFile:
-            print(f"Error: Failed to unzip {file_name}. It might be a corrupted file.")
+            self.logger.error(f"Error: Failed to unzip {file_name}. It might be a corrupted file.")
             return None
         except OSError as e:
-            print(f"Error processing file {file_name}: {e}")
+            self.logger.error(f"Error processing file {file_name}: {e}")
             return None
         except Exception as e:
-            print(f"  - Error parsing file {os.path.basename(zip_file_path)}: {e}")
+            self.logger.error(f"  - Error parsing file {os.path.basename(zip_file_path)}: {e}")
             return None
 
     def _find_header_line(self, file_path, header_keyword):

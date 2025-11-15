@@ -33,18 +33,6 @@ async def get_db():
 async def read_root(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@router.get("/parameters")
-async def get_parameters(db: AsyncDatabase = Depends(get_db)):
-    """Get all available parameters from the database."""
-    parameters = await db.get_all_parameters()
-    return JSONResponse(content=parameters)
-
-@router.get("/stations")
-async def get_stations(db: AsyncDatabase = Depends(get_db)):
-    """Get all weather stations from the database."""
-    stations = await db.get_all_stations()
-    return JSONResponse(content=stations)
-
 @router.post("/weather")
 async def get_weather(location: str = Form(...), date: str = Form(...), db: AsyncDatabase = Depends(get_db)):
     """
@@ -82,8 +70,18 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
         return JSONResponse(content={'error': 'Start date cannot be after end date.'}, status_code=400)
 
     analysis = Analysis(db)
-    all_params = await db.get_all_parameters()
-    parameters = {p[0]: (p[1], p[2]) for p in all_params}
+    
+    parameters = {
+        "tmk": ("Mean Temperature", "°C"),
+        "txk": ("Maximum Temperature", "°C"),
+        "tnk": ("Minimum Temperature", "°C"),
+        "upm": ("Mean Humidity", "%"),
+        "vpm": ("Mean Vapor Pressure", "hPa"),
+        "pm": ("Mean Pressure", "hPa"),
+        "rsk": ("Daily Precipitation", "mm"),
+        "sdk": ("Daily Sunshine Duration", "h")
+    }
+
     if parameter not in parameters:
         return JSONResponse(content={'error': 'Invalid parameter.'}, status_code=400)
 
@@ -122,3 +120,4 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
     plot_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     return JSONResponse(content={'plot': plot_base64})
+

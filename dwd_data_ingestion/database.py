@@ -5,11 +5,12 @@ import pandas as pd
 import io
 
 class Database:
-    def __init__(self, db_config, na_value, file_encoding):
+    def __init__(self, db_config, na_value, file_encoding, logger):
         self.db_config = db_config
         self.conn = None
         self.na_value = na_value
         self.file_encoding = file_encoding
+        self.logger = logger
 
     def create_connection(self):
         """ create a database connection to the PostgreSQL database
@@ -24,7 +25,7 @@ class Database:
                 dbname=self.db_config['dbname']
             )
         except psycopg.Error as e:
-            print(f"Database connection error: {e}")
+            self.logger.error(f"Database connection error: {e}")
             raise
 
     def close_connection(self):
@@ -35,31 +36,24 @@ class Database:
     def create_tables(self, sql_file_path):
         """ create tables from a .sql file """
         try:
-            print(f"Attempting to read SQL file from {sql_file_path}...")
+            self.logger.info(f"Attempting to read SQL file from {sql_file_path}...")
             with open(sql_file_path, 'r') as sql_file:
                 sql_script = sql_file.read()
-            print("SQL file read successfully.")
+            self.logger.info("SQL file read successfully.")
             with self.conn.cursor() as cur:
-                print("Executing SQL script...")
+                self.logger.info("Executing SQL script...")
                 cur.execute(sql_script)
             self.conn.commit()
-            print("Tables created successfully.")
+            self.logger.info("Tables created successfully.")
         except psycopg.Error as e:
-            print(f"Database error: {e}")
+            self.logger.error(f"Database error: {e}")
         except FileNotFoundError:
-            print(f"Error: SQL file not found at {sql_file_path}")
+            self.logger.error(f"Error: SQL file not found at {sql_file_path}")
 
     def get_all_stations(self):
         """Query all rows in the Station table"""
         with self.conn.cursor() as cur:
             cur.execute("SELECT Station_ID, geoBreite, geoLaenge, Stationsname FROM Station")
-            rows = cur.fetchall()
-            return rows
-
-    def get_all_parameters(self):
-        """Query all rows in the Parameter table"""
-        with self.conn.cursor() as cur:
-            cur.execute("SELECT Parameter_Name, Parameter_Description, Unit FROM Parameter")
             rows = cur.fetchall()
             return rows
 
@@ -133,7 +127,7 @@ class Database:
                     'sdk', 'shk_tag', 'nm', 'vpm', 'pm', 'tmk', 'upm', 'txk', 'tnk', 'tgk'
                 ]]
 
-                print(f"Columns to be inserted into {table_name}: {db_cols}")
+                self.logger.info(f"Columns to be inserted into {table_name}: {db_cols}")
                 
                 buffer = io.StringIO()
                 df[db_cols].to_csv(buffer, index=False, header=False, sep='\t', na_rep='\\N')
@@ -141,27 +135,27 @@ class Database:
 
                 with self.conn.cursor() as cur:
                     try:
-                        print()
+                        self.logger.info(f"Using COPY to insert data from {os.path.basename(csv_filepath)} into {table_name}.")
                         with cur.copy(f"COPY {table_name} ({','.join(db_cols)}) FROM STDIN") as copy:
                             copy.write(buffer.read())
                         self.conn.commit()
-                        print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} using COPY.")
+                        self.logger.info(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} using COPY.")
                     except Exception as e:
                         self.conn.rollback()
-                        print(f"Error using COPY for {os.path.basename(csv_filepath)}: {e}")
-                        print("Falling back to row-by-row insertion...")
+                        self.logger.error(f"Error using COPY for {os.path.basename(csv_filepath)}: {e}")
+                        self.logger.info("Falling back to row-by-row insertion...")
                         self._insert_csv_row_by_row(csv_filepath, delimiter)
 
             elif 'Stationsname' in header:
                 self._insert_csv_row_by_row(csv_filepath, delimiter)
             else:
-                print(f"Error: Cannot determine table for CSV {csv_filepath}. Headers: {header}")
+                self.logger.error(f"Error: Cannot determine table for CSV {csv_filepath}. Headers: {header}")
                 return
 
         except FileNotFoundError:
-            print(f"Error: {csv_filepath} not found.")
+            self.logger.error(f"Error: {csv_filepath} not found.")
         except Exception as e:
-            print(f"An error occurred while processing {csv_filepath}: {e}")
+            self.logger.error(f"An error occurred while processing {csv_filepath}: {e}")
 
     def _insert_csv_row_by_row(self, csv_filepath, delimiter):
         """
@@ -199,37 +193,7 @@ class Database:
                     try:
                         cur.execute(sql, cleaned_row)
                     except psycopg.IntegrityError as e:
-                        print(f"Skipping row due to IntegrityError: {e}")
+                        self.logger.warning(f"Skipping row due to IntegrityError: {e}")
                         self.conn.rollback()
                 self.conn.commit()
-            print(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} (row-by-row).")
-
-    def insert_parameters(self, file_path):
-        try:
-            with open(file_path, 'r', encoding=self.file_encoding) as f:
-                reader = csv.reader(f, delimiter=';')
-                header = [h.strip() for h in next(reader)]
-                name_index = header.index('Parameter')
-                description_index = header.index('Parameterbeschreibung')
-                unit_index = header.index('Einheit')
-
-            with self.conn.cursor() as cur:
-                for row in reader:
-                    if not row or len(row) <= max(name_index, description_index, unit_index): continue
-                    
-                    parameter_name = row[name_index].strip()
-                    cur.execute("SELECT 1 FROM Parameter WHERE Parameter_Name = %s", (parameter_name,))
-                    if cur.fetchone(): continue
-
-                    sql = "INSERT INTO Parameter (Parameter_Name, Parameter_Description, Unit) VALUES (%s, %s, %s)"
-                    try:
-                        cur.execute(sql, (parameter_name, row[description_index].strip(), row[unit_index].strip()))
-                    except psycopg.IntegrityError as e:
-                        print(f"Skipping row due to IntegrityError: {e}")
-                        self.conn.rollback()
-                self.conn.commit()
-            print(f"Data from {file_path} successfully inserted into Parameter.")
-        except (FileNotFoundError, ValueError) as e:
-            print(f"Error processing parameter file {file_path}: {e}")
-        except Exception as e:
-            print(f"An unexpected error occurred: {e}")
+            self.logger.info(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} (row-by-row).")
