@@ -52,6 +52,18 @@ async def get_weather(location: str = Form(...), date: str = Form(...), db: Asyn
 
     return JSONResponse(content=weather_data)
 
+@router.get("/stations")
+async def get_stations(db: AsyncDatabase = Depends(get_db)):
+    """Get all weather stations from the database."""
+    stations = await db.get_all_stations()
+    return JSONResponse(content=stations)
+
+@router.get("/station_dates")
+async def get_station_dates(station_id: int, db: AsyncDatabase = Depends(get_db)):
+    """Get the date range for a specific station."""
+    date_range = await db.get_station_date_range(station_id)
+    return JSONResponse(content=date_range)
+
 @router.post("/plot_data")
 async def plot_data(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), parameter: str = Form(...), db: AsyncDatabase = Depends(get_db)):
     """

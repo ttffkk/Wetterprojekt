@@ -159,7 +159,7 @@ class Database:
 
     def _insert_csv_row_by_row(self, csv_filepath, delimiter):
         """
-        Private helper for row-by-row insertion logic.
+        Private helper for row-  by-row insertion logic.
         """
         with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
             reader = csv.reader(f, delimiter=delimiter)

@@ -56,6 +56,15 @@ class AsyncDatabase:
             rows = await acur.fetchall()
             return rows
 
+    async def get_station_date_range(self, station_id: int):
+        """Query the date range for a specific station."""
+        async with self.conn.cursor() as acur:
+            await acur.execute("SELECT von_datum, bis_datum FROM Station WHERE Station_ID = %s", (station_id,))
+            row = await acur.fetchone()
+            if row:
+                return {"von_datum": row[0].isoformat(), "bis_datum": row[1].isoformat()}
+            return None
+
     async def get_all_parameters(self):
         """Query all rows in the Parameter table"""
         async with self.conn.cursor() as acur:
