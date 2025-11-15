@@ -59,6 +59,9 @@ async def get_weather(location: str = Form(...), date: str = Form(...), db: Asyn
     if weather_data is None:
         return JSONResponse(content={'error': 'Could not retrieve weather data.'}, status_code=400)
 
+    if 'error' in weather_data:
+        return JSONResponse(content=weather_data, status_code=400)
+
     return JSONResponse(content=weather_data)
 
 @router.post("/plot_data")
@@ -90,6 +93,8 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
     while current_date <= end_date_obj:
         date_str = current_date.strftime('%Y-%m-%d')
         data = await analysis.interpolate_weather_data(location, date_str)
+        if data and 'error' in data:
+            return JSONResponse(content=data, status_code=400)
         if data and data.get(parameter) is not None:
             dates.append(current_date)
             values.append(data[parameter])
@@ -117,37 +122,3 @@ async def plot_data(location: str = Form(...), start_date: str = Form(...), end_
     plot_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
 
     return JSONResponse(content={'plot': plot_base64})
-
-@router.post("/export_csv")
-async def export_csv(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), db: AsyncDatabase = Depends(get_db)):
-    """
-    Export weather data to a CSV file.
-    """
-    if not location or not start_date or not end_date:
-        return JSONResponse(content={'error': 'Invalid input'}, status_code=400)
-
-    try:
-        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-    except ValueError:
-        return JSONResponse(content={'error': 'Invalid date format. Use YYYY-MM-DD.'}, status_code=400)
-
-    if start_date_obj > end_date_obj:
-        return JSONResponse(content={'error': 'Start date cannot be after end date.'}, status_code=400)
-
-    analysis = Analysis(db)
-    weather_data = await analysis.get_weather_data_for_period(location, start_date, end_date)
-
-    if not weather_data or len(weather_data) <= 1:
-        return JSONResponse(content={'error': 'No weather data available for the specified period.'}, status_code=400)
-
-    output = io.StringIO()
-    writer = csv.writer(output)
-    writer.writerows(weather_data)
-
-    return Response(
-        output.getvalue(),
-        media_type="text/csv",
-        headers={"Content-Disposition":
-                 f"attachment; filename=weather_data_{location}_{start_date}_{end_date}.csv"}
-    )

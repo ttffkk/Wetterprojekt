@@ -25,11 +25,9 @@ class Analysis:
         try:
             location = self.geolocator.geocode(address)
             if not location:
-                print(f"Error: Could not geocode address '{address}'.")
-                return []
+                raise ValueError(f"Could not geocode address '{address}'. Please provide a more specific address.")
         except Exception as e:
-            print(f"An error occurred during geocoding: {e}")
-            return []
+            raise ValueError(f"An error occurred during geocoding: {e}")
 
         target_coords = (location.latitude, location.longitude)
         all_stations = await self.db.get_all_stations()
@@ -56,7 +54,11 @@ class Analysis:
         :param date: The date for which to interpolate data ('YYYY-MM-DD').
         :return: The interpolated temperature.
         """
-        nearest_stations = await self.find_nearest_stations(address)
+        try:
+            nearest_stations = await self.find_nearest_stations(address)
+        except ValueError as e:
+            return {'error': str(e)}
+            
         if not nearest_stations:
             return None
 
