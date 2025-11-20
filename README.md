@@ -47,50 +47,6 @@ This is the recommended way to run the application.
     *   **Web Interface**: `http://localhost:8080`
     *   **API Docs (Swagger UI)**: `http://localhost:8000/docs`
 
-## Local Development Setup
-
-If you prefer to run the application without Docker, follow these steps.
-
-### Prerequisites
-
-*   Python 3.9+
-*   A running PostgreSQL server
-
-### Installation
-
-1.  **Clone the repository and navigate into it.**
-
-2.  **Create and activate a Python virtual environment:**
-    ```sh
-    python -m venv .venv
-    # On Windows: .venv\Scripts\activate
-    # On macOS/Linux: source .venv/bin/activate
-    ```
-
-3.  **Install dependencies:**
-    ```sh
-    pip install -r requirements.txt
-    ```
-
-4.  **Configure the database:**
-    *   Ensure your PostgreSQL server is running.
-    *   Create a database (e.g., `wetter`).
-    *   Edit the `database` section in `config.yaml` with your connection details (host, port, user, password, dbname).
-
-### Usage
-
-1.  **Run the Data Import:**
-    This command uses the credentials from your `config.yaml` to connect to the database.
-    ```sh
-    python -m dwd_data_ingestion.cli import-data
-    ```
-
-2.  **Run the Web Application:**
-    ```sh
-    uvicorn main:app --reload
-    ```
-    The application will be available at `http://localhost:8000`.
-
 ## Project Structure
 
 ```
@@ -123,7 +79,4 @@ If you prefer to run the application without Docker, follow these steps.
 
 ## Configuration
 
-The application can be configured in two ways depending on the environment:
-
-*   **`config.yaml`**: Used for local development when not using Docker. It contains settings for the data source and database connection.
-*   **Environment Variables**: Used for Docker deployments. The values in `docker-compose.yml` override the database settings in `config.yaml`.
+The application is configured using environment variables. The values in `docker-compose.yml` override the database settings.
