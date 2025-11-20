@@ -10,7 +10,7 @@ const { createApp, ref, onMounted, watch } = Vue;
                 const filteredStations = ref([]);
                 const searchFocused = ref(false);
 
-                const liveWeather = ref({});
+
                 const nearestStations = ref([]);
                 const selectedStation = ref({});
 
@@ -58,14 +58,7 @@ const { createApp, ref, onMounted, watch } = Vue;
                     }
                 };
 
-                const fetchLiveWeather = async (lat, lon) => {
-                    try {
-                        const response = await fetch(`/api/live_weather?lat=${lat}&lon=${lon}`);
-                        liveWeather.value = await response.json();
-                    } catch (error) {
-                        console.error("Failed to fetch live weather:", error);
-                    }
-                };
+
 
                 const fetchNearestStations = async (lat, lon) => {
                     try {
@@ -143,7 +136,7 @@ const { createApp, ref, onMounted, watch } = Vue;
 
                 const onMapClick = (e) => {
                     const { lat, lng } = e.latlng;
-                    fetchLiveWeather(lat, lng);
+
                     fetchNearestStations(lat, lng);
 
                     if (clickMarker) {
@@ -214,15 +207,14 @@ const { createApp, ref, onMounted, watch } = Vue;
                 // --- Watchers ---
                 watch(showStations, updateStationMarkers);
 
-                // --- Helpers ---
-                const formatTimestamp = (ts) => ts ? new Date(ts).toLocaleString() : 'N/A';
+
 
                 return {
                     showStations,
                     searchQuery,
                     filteredStations,
                     searchFocused,
-                    liveWeather,
+
                     nearestStations,
                     selectedStation,
                     analysisParams,
@@ -232,7 +224,7 @@ const { createApp, ref, onMounted, watch } = Vue;
                     hideAutocomplete,
                     selectStation,
                     runAnalysis,
-                    formatTimestamp,
+
                 };
             }
         }).mount('#app');

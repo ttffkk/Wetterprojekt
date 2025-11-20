@@ -41,23 +41,7 @@
                 </div>
             </div>
 
-            <!-- Live Weather -->
-            <div class="card">
-                <div class="card-header">📍 Live Weather</div>
-                <div class="card-body" v-if="liveWeather.location_name">
-                    <h5 class="card-title">{{ liveWeather.location_name }}</h5>
-                    <p class="card-text">
-                        <strong>🌡️ Temp:</strong> {{ liveWeather.temperature?.toFixed(1) }} °C <br>
-                        <strong>💧 Humidity:</strong> {{ liveWeather.relative_humidity?.toFixed(1) }} % <br>
-                        <strong>💨 Wind:</strong> {{ liveWeather.wind_speed_10m?.toFixed(1) }} km/h <br>
-                        <strong>🌧️ Rain:</strong> {{ liveWeather.rain?.toFixed(1) }} mm
-                    </p>
-                    <p class="card-text"><small class="text-muted">Updated: {{ formatTimestamp(liveWeather.timestamp) }}</small></p>
-                </div>
-                <div class="card-body text-muted" v-else>
-                    Click on the map to see live weather.
-                </div>
-            </div>
+
 
             <!-- Nearest Stations -->
             <div class="card">

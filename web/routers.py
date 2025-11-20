@@ -6,7 +6,7 @@ import yaml
 from backend.database import Database
 from backend.analysis import Analysis
 from web.models import (
-    LiveWeather,
+
     ChartData,
 )
 
@@ -24,13 +24,7 @@ async def get_db():
     finally:
         await db.close_connection()
 
-@router.get("/live_weather", response_model=LiveWeather)
-async def get_live_weather_endpoint(lat: float, lon: float, db: Database = Depends(get_db)):
-    analysis = Analysis(db)
-    data = await analysis.get_live_weather(lat, lon)
-    if data.get("error"):
-        raise HTTPException(status_code=500, detail=data.get("message", "Failed to get live weather"))
-    return data
+
 
 @router.get("/all_stations", response_model=Dict[str, Any])
 async def get_all_stations_endpoint(db: Database = Depends(get_db)):
