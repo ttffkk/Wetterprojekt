@@ -3,15 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wetteranalyse</title>
+    <title>Wetteranalyse Deluxe</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --sidebar-width: 380px;
+            --primary-color: #4A90E2;
+            --secondary-color: #50E3C2;
+            --background-color: #F4F6F8;
+            --card-background: #FFFFFF;
+            --text-color: #333;
+            --light-text-color: #777;
+            --border-color: #EAECEE;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
         }
         body {
-            background-color: #f8f9fa;
+            background-color: var(--background-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
         }
         #app {
             display: flex;
@@ -19,12 +31,12 @@
             overflow: hidden;
         }
         .sidebar {
-            width: var(--sidebar-width);
+            width: 400px;
             flex-shrink: 0;
-            background-color: #fff;
-            padding: 20px;
+            background-color: var(--card-background);
+            padding: 25px;
             overflow-y: auto;
-            border-right: 1px solid #dee2e6;
+            border-right: 1px solid var(--border-color);
         }
         .main-content {
             flex-grow: 1;
@@ -32,36 +44,66 @@
             flex-direction: column;
         }
         #map {
-            height: 65%;
+            height: 60%;
             width: 100%;
         }
         .analysis-section {
-            height: 35%;
-            padding: 20px;
+            height: 40%;
+            padding: 25px;
             overflow-y: auto;
-            background-color: #fff;
-            border-top: 1px solid #dee2e6;
+            background-color: var(--card-background);
+            border-top: 1px solid var(--border-color);
         }
-        .leaflet-popup-content-wrapper {
-            border-radius: 8px;
+        .sidebar h2 {
+            font-weight: 700;
+            color: var(--primary-color);
         }
-        .station-popup .btn {
-            width: 100%;
+        .card {
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 1.1rem;
         }
         .autocomplete-results {
             position: absolute;
-            background: white;
-            border: 1px solid #ccc;
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             z-index: 1000;
-            width: calc(var(--sidebar-width) - 40px);
-            max-height: 200px;
+            width: calc(400px - 50px);
+            max-height: 250px;
             overflow-y: auto;
+            box-shadow: var(--shadow);
+            margin-top: 5px;
         }
         .autocomplete-results .list-group-item {
             cursor: pointer;
+            transition: background-color 0.2s;
         }
         .autocomplete-results .list-group-item:hover {
-            background-color: #f0f0f0;
+            background-color: #f0f5ff;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
         }
     </style>
 </head>
@@ -69,38 +111,41 @@
     <div id="app">
         <!-- Sidebar -->
         <div class="sidebar">
-            <h2 class="mb-4">Wetteranalyse</h2>
+            <h2 class="mb-4">🌦️ Wetteranalyse</h2>
 
             <!-- Station Search -->
-            <div class="mb-3 position-relative">
-                <label for="station-search" class="form-label">Station Search</label>
-                <input type="text" id="station-search" class="form-control" placeholder="Search by name or ID"
-                    v-model="searchQuery" @input="filterStations" @focus="searchFocused = true" @blur="hideAutocomplete">
-                <div v-if="searchFocused && filteredStations.length" class="autocomplete-results">
-                    <ul class="list-group">
-                        <li v-for="station in filteredStations.slice(0, 10)" :key="station.station_id"
-                            class="list-group-item" @mousedown="selectStation(station)">
-                            {{ station.station_name }} ({{ station.station_id }})
-                        </li>
-                    </ul>
+            <div class="card">
+                <div class="card-header">Station Search</div>
+                <div class="card-body">
+                    <div class="position-relative">
+                        <input type="text" id="station-search" class="form-control" placeholder="Search by name or ID"
+                            v-model="searchQuery" @input="filterStations" @focus="searchFocused = true" @blur="hideAutocomplete">
+                        <div v-if="searchFocused && filteredStations.length" class="autocomplete-results">
+                            <ul class="list-group list-group-flush">
+                                <li v-for="station in filteredStations.slice(0, 10)" :key="station.station_id"
+                                    class="list-group-item" @mousedown="selectStation(station)">
+                                    <strong>{{ station.station_name }}</strong> ({{ station.station_id }})
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="toggleStations" v-model="showStations">
+                        <label class="form-check-label" for="toggleStations">Show All Stations</label>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="form-check form-switch mb-3">
-                <input class="form-check-input" type="checkbox" role="switch" id="toggleStations" v-model="showStations">
-                <label class="form-check-label" for="toggleStations">Show All Stations</label>
             </div>
 
             <!-- Live Weather -->
-            <div class="card mb-3">
-                <div class="card-header fw-bold">Live Weather</div>
+            <div class="card">
+                <div class="card-header">📍 Live Weather</div>
                 <div class="card-body" v-if="liveWeather.location_name">
                     <h5 class="card-title">{{ liveWeather.location_name }}</h5>
                     <p class="card-text">
-                        <strong>Temp:</strong> {{ liveWeather.temperature?.toFixed(1) }} °C <br>
-                        <strong>Humidity:</strong> {{ liveWeather.relative_humidity?.toFixed(1) }} % <br>
-                        <strong>Wind:</strong> {{ liveWeather.wind_speed_10m?.toFixed(1) }} km/h <br>
-                        <strong>Rain:</strong> {{ liveWeather.rain?.toFixed(1) }} mm
+                        <strong>🌡️ Temp:</strong> {{ liveWeather.temperature?.toFixed(1) }} °C <br>
+                        <strong>💧 Humidity:</strong> {{ liveWeather.relative_humidity?.toFixed(1) }} % <br>
+                        <strong>💨 Wind:</strong> {{ liveWeather.wind_speed_10m?.toFixed(1) }} km/h <br>
+                        <strong>🌧️ Rain:</strong> {{ liveWeather.rain?.toFixed(1) }} mm
                     </p>
                     <p class="card-text"><small class="text-muted">Updated: {{ formatTimestamp(liveWeather.timestamp) }}</small></p>
                 </div>
@@ -111,10 +156,10 @@
 
             <!-- Nearest Stations -->
             <div class="card">
-                <div class="card-header fw-bold">Nearest Stations</div>
-                <div class="card-body" v-if="nearestStations.length">
+                <div class="card-header">🛰️ Nearest Stations</div>
+                <div class="card-body p-0" v-if="nearestStations.length">
                     <ul class="list-group list-group-flush">
-                        <li v-for="station in nearestStations" :key="station.station_id" 
+                        <li v-for="station in nearestStations" :key="station.station_id"
                             class="list-group-item d-flex justify-content-between align-items-center"
                             @click="selectStation(station)" style="cursor: pointer;">
                             {{ station.station_name }}
@@ -134,18 +179,18 @@
             <div class="analysis-section">
                 <h3 class="mb-3">Historical Analysis</h3>
                 <div v-if="selectedStation.station_id">
-                    <p>Selected Station: <strong>{{ selectedStation.station_name }}</strong> (Available: {{ selectedStation.start_date }} to {{ selectedStation.end_date }})</p>
-                    
+                    <div class="alert alert-info">Selected Station: <strong>{{ selectedStation.station_name }}</strong> (Available: {{ selectedStation.start_date }} to {{ selectedStation.end_date }})</div>
+
                     <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
+                        <div class="col">
                             <label for="start-date" class="form-label">Start Date</label>
                             <input type="date" id="start-date" class="form-control" v-model="analysisParams.start_date">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col">
                             <label for="end-date" class="form-label">End Date</label>
                             <input type="date" id="end-date" class="form-control" v-model="analysisParams.end_date">
                         </div>
-                        <div class="col-md-2">
+                        <div class="col">
                             <label for="metric" class="form-label">Metric</label>
                             <select id="metric" class="form-select" v-model="analysisParams.metric">
                                 <option value="tmk">Avg Temp</option>
@@ -155,7 +200,7 @@
                                 <option value="upm">Humidity</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col">
                             <label for="aggregation" class="form-label">Aggregation</label>
                             <select id="aggregation" class="form-select" v-model="analysisParams.aggregation">
                                 <option value="daily">Daily</option>
@@ -163,50 +208,62 @@
                                 <option value="yearly">Yearly</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
+                        <div class="col-auto">
                             <button class="btn btn-primary w-100" @click="runAnalysis">Analyze</button>
                         </div>
                     </div>
-                    
+
                     <!-- Chart and Table -->
-                    <div class="mt-4" v-if="chartData.labels.length">
-                        <div id="chart"></div>
-                    </div>
-                    <div class="mt-4" v-if="historicalData.rows.length">
-                        <h5>Historical Data Table</h5>
-                        <div style="max-height: 200px; overflow-y: auto;">
-                            <table class="table table-sm table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Period</th>
-                                        <th>Avg Temp (°C)</th>
-                                        <th>Max Temp (°C)</th>
-                                        <th>Min Temp (°C)</th>
-                                        <th>Precipitation (mm)</th>
-                                        <th>Humidity (%)</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="row in historicalData.rows">
-                                        <td>{{ row.period }}</td>
-                                        <td>{{ row.avg_temp?.toFixed(1) }}</td>
-                                        <td>{{ row.max_temp?.toFixed(1) }}</td>
-                                        <td>{{ row.min_temp?.toFixed(1) }}</td>
-                                        <td>{{ row.precipitation?.toFixed(1) }}</td>
-                                        <td>{{ row.avg_humidity?.toFixed(1) }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                    <div class="mt-4" v-if="chartData.labels.length || historicalData.rows.length">
+                        <ul class="nav nav-tabs" id="analysisTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart-pane" type="button" role="tab">Chart</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-pane" type="button" role="tab">Data Table</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="analysisTabContent">
+                            <div class="tab-pane fade show active" id="chart-pane" role="tabpanel">
+                                <div id="chart" class="mt-3"></div>
+                            </div>
+                            <div class="tab-pane fade" id="table-pane" role="tabpanel">
+                                 <div style="max-height: 200px; overflow-y: auto;" class="mt-3">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Period</th>
+                                                <th>Avg Temp (°C)</th>
+                                                <th>Max Temp (°C)</th>
+                                                <th>Min Temp (°C)</th>
+                                                <th>Precipitation (mm)</th>
+                                                <th>Humidity (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in historicalData.rows">
+                                                <td>{{ row.period }}</td>
+                                                <td>{{ row.avg_temp?.toFixed(1) }}</td>
+                                                <td>{{ row.max_temp?.toFixed(1) }}</td>
+                                                <td>{{ row.min_temp?.toFixed(1) }}</td>
+                                                <td>{{ row.precipitation?.toFixed(1) }}</td>
+                                                <td>{{ row.avg_humidity?.toFixed(1) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div v-else class="text-muted">
-                    Select a station to run historical analysis.
+                <div v-else class="text-muted text-center pt-5">
+                    <h5>Select a station to begin analysis</h5>
                 </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -226,14 +283,14 @@
                 const liveWeather = ref({});
                 const nearestStations = ref([]);
                 const selectedStation = ref({});
-                
+
                 const analysisParams = ref({
                     start_date: '',
                     end_date: '',
                     metric: 'tmk',
                     aggregation: 'monthly',
                 });
-                
+
                 const chartData = ref({ labels: [], values: [] });
                 const historicalData = ref({ rows: [] });
                 let clickMarker = null;
@@ -247,12 +304,12 @@
                     }).addTo(map.value);
 
                     stationMarkers.value = L.layerGroup();
-                    
+
                     fetchAllStations();
 
                     map.value.on('click', onMapClick);
                 });
-                
+
                 // --- API Calls ---
                 const fetchAllStations = async () => {
                     try {
@@ -289,10 +346,10 @@
                         console.error("Failed to fetch nearest stations:", error);
                     }
                 };
-                
+
                 const runAnalysis = async () => {
                     if (!selectedStation.value.station_id) return;
-                    
+
                     const params = new URLSearchParams({
                         station_id: selectedStation.value.station_id,
                         start_date: analysisParams.value.start_date,
@@ -311,7 +368,7 @@
                     } catch (error) {
                         console.error("Failed to fetch chart data:", error);
                     }
-                    
+
                     // Fetch historical table data
                     const histParams = new URLSearchParams({
                         station_id: selectedStation.value.station_id,
@@ -374,15 +431,15 @@
                     analysisParams.value.start_date = station.start_date;
                     analysisParams.value.end_date = station.end_date;
                 };
-                
+
                 const filterStations = () => {
                     if (searchQuery.value.length < 2) {
                         filteredStations.value = [];
                         return;
                     }
                     const lowerQuery = searchQuery.value.toLowerCase();
-                    filteredStations.value = allStations.value.filter(s => 
-                        s.station_name.toLowerCase().includes(lowerQuery) || 
+                    filteredStations.value = allStations.value.filter(s =>
+                        s.station_name.toLowerCase().includes(lowerQuery) ||
                         s.station_id.toString().includes(lowerQuery)
                     );
                 };
@@ -399,6 +456,14 @@
                         y: chartData.value.values,
                         type: 'scatter',
                         mode: 'lines+markers',
+                        line: {
+                            color: '#4A90E2',
+                            width: 2
+                        },
+                        marker: {
+                            color: '#4A90E2',
+                            size: 6
+                        }
                     };
 
                     const layout = {
@@ -406,8 +471,13 @@
                         xaxis: { title: 'Period' },
                         yaxis: { title: metricLabel },
                         margin: { t: 40, l: 60, r: 20, b: 50 },
+                        paper_bgcolor: 'transparent',
+                        plot_bgcolor: 'transparent',
+                        font: {
+                            family: 'Inter, sans-serif'
+                        }
                     };
-                    
+
                     Plotly.newPlot('chart', [trace], layout, { responsive: true });
                 };
 
