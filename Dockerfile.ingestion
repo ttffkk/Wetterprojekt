@@ -8,8 +8,9 @@ WORKDIR /app
 COPY requirements.txt setup.py ./
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e .
+RUN pip install --no-cache-dir -r requirements.txt \
+&& pip install -e .
+
 
 # Copy the rest of the application
 COPY . .
