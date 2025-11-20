@@ -53,7 +53,7 @@ This is the recommended way to run the application.
 .
 ├── backend/
 │   └── analysis.py
-├── dwd_data_ingestion/
+├── data_ingestion/
 │   ├── __init__.py
 │   ├── cli.py
 │   ├── data_pipeline.py

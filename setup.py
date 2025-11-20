@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='dwd_data_ingestion',
+    name='data_ingestion',
     version='0.1.0',
     packages=find_packages(),
     install_requires=[
@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'dwd-ingest=dwd_data_ingestion.cli:app',
+            'dwd-ingest=data_ingestion.cli:app',
         ],
     },
 )
