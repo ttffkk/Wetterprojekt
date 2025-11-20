@@ -153,50 +153,61 @@ class StationImporter:
         """
         self.logger.info(f"Importing stations from {file_path}...")
         
-        # Define column widths and names
+        # Define column widths and names from the source file
         col_specs = [
             (0, 5), (6, 14), (15, 23), (24, 38), (43, 51), 
             (53, 61), (61, 102), (102, 124)
         ]
-        col_names = [
+        source_col_names = [
             "Station_ID", "von_datum", "bis_datum", "Stattionhoehe", 
             "geoBreite", "geoLaenge", "Stationsname", "Bundesland"
         ]
 
         try:
-            # Read the fixed-width file, skipping header rows
-            df = pd.read_fwf(file_path, colspecs=col_specs, names=col_names, skiprows=2, encoding='latin-1', dtype=str)
+            # Read the fixed-width file
+            df = pd.read_fwf(file_path, colspecs=col_specs, names=source_col_names, skiprows=2, encoding='latin-1', dtype=str)
 
-            # Clean up the data
-            df['Stationsname'] = df['Stationsname'].str.strip()
-            df['Bundesland'] = df['Bundesland'].str.strip()
+            # --- Data Cleaning and Transformation ---
+            df.rename(columns={
+                "Station_ID": "station_id",
+                "von_datum": "start_date",
+                "bis_datum": "end_date",
+                "Stattionhoehe": "altitude",
+                "geoBreite": "latitude",
+                "geoLaenge": "longitude",
+                "Stationsname": "station_name",
+                "Bundesland": "state"
+            }, inplace=True)
+
+            df['station_name'] = df['station_name'].str.strip()
+            df['state'] = df['state'].str.strip()
             
             # Convert data types
-            df['Station_ID'] = pd.to_numeric(df['Station_ID'], errors='coerce')
-            df['von_datum'] = pd.to_datetime(df['von_datum'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
-            df['bis_datum'] = pd.to_datetime(df['bis_datum'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
-            df['Stattionhoehe'] = pd.to_numeric(df['Stattionhoehe'], errors='coerce')
-            df['geoBreite'] = pd.to_numeric(df['geoBreite'], errors='coerce')
-            df['geoLaenge'] = pd.to_numeric(df['geoLaenge'], errors='coerce')
+            df['station_id'] = pd.to_numeric(df['station_id'], errors='coerce')
+            df['start_date'] = pd.to_datetime(df['start_date'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
+            df['end_date'] = pd.to_datetime(df['end_date'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
+            df['altitude'] = pd.to_numeric(df['altitude'], errors='coerce')
+            df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
+            df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
 
-            # Drop rows with invalid Station_ID
-            df.dropna(subset=['Station_ID'], inplace=True)
-            df['Station_ID'] = df['Station_ID'].astype(int)
+            # Drop rows with invalid station_id
+            df.dropna(subset=['station_id'], inplace=True)
+            df['station_id'] = df['station_id'].astype(int)
 
-            # Insert data into the database
+            # --- Database Insertion ---
             with self.db_connection.cursor() as cur:
                 for _, row in df.iterrows():
                     try:
                         cur.execute(
                             """
-                            INSERT INTO Station (Station_ID, von_datum, bis_datum, Stattionhoehe, geoBreite, geoLaenge, Stationsname, Bundesland)
+                            INSERT INTO stations (station_id, start_date, end_date, altitude, latitude, longitude, station_name, state)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                            ON CONFLICT (Station_ID) DO NOTHING
+                            ON CONFLICT (station_id) DO NOTHING
                             """,
-                            (row['Station_ID'], row['von_datum'], row['bis_datum'], row['Stattionhoehe'], row['geoBreite'], row['geoLaenge'], row['Stationsname'], row['Bundesland'])
+                            (row['station_id'], row['start_date'], row['end_date'], row['altitude'], row['latitude'], row['longitude'], row['station_name'], row['state'])
                         )
                     except Exception as e:
-                        self.logger.warning(f"Skipping duplicate or invalid station {row['Station_ID']}: {e}")
+                        self.logger.warning(f"Skipping duplicate or invalid station {row['station_id']}: {e}")
             
             self.db_connection.commit()
             self.logger.info(f"Successfully imported {len(df)} stations.")

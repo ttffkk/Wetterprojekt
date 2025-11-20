@@ -4,8 +4,8 @@ services:
     command: postgres -c log_statement=all
     environment:
       POSTGRES_DB: wetter
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ttffkk
+      POSTGRES_PASSWORD: answer42
     volumes:
       - db_data:/var/lib/postgresql/data
     ports:
@@ -28,6 +28,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.ingestion
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=ttffkk
+      - DB_PASSWORD=answer42
+      - DB_NAME=wetter
     depends_on:
       - db
     networks:

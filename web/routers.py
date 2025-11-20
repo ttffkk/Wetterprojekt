@@ -1,148 +1,70 @@
-from fastapi import APIRouter, Request, Form, Depends, Response
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends, Query, HTTPException
+from typing import List, Dict, Any
+from datetime import date
 import yaml
-from backend.analysis import Analysis
-from backend.database import AsyncDatabase
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import io
-import base64
-import csv
-from datetime import datetime, timedelta
-import os
 
-router = APIRouter()
-templates = Jinja2Templates(directory="web/templates")
+from backend.database import Database
+from backend.analysis import Analysis
+from web.models import (
+    LiveWeather,
+    ChartData,
+)
+
+router = APIRouter(prefix="/api")
 
 # Dependency to get the database connection
 async def get_db():
     with open('config.yaml', 'r') as file:
         config = yaml.safe_load(file)
     db_config = config['database']
-    file_properties_config = config['source']['file_properties']
-    db = AsyncDatabase(db_config, file_properties_config['na_value'], file_properties_config['file_encoding'])
+    db = Database(db_config)
     await db.create_connection()
     try:
         yield db
     finally:
         await db.close_connection()
 
-@router.get("/", response_class=HTMLResponse)
-async def read_root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-@router.post("/weather")
-async def get_weather(location: str = Form(...), date: str = Form(...), db: AsyncDatabase = Depends(get_db)):
-    """
-    Get weather data for a specific location and date.
-    """
-    if not location or not date:
-        return JSONResponse(content={'error': 'Invalid input'}, status_code=400)
-
+@router.get("/live_weather", response_model=LiveWeather)
+async def get_live_weather_endpoint(lat: float, lon: float, db: Database = Depends(get_db)):
     analysis = Analysis(db)
-    weather_data = await analysis.interpolate_weather_data(location, date)
+    data = await analysis.get_live_weather(lat, lon)
+    if data.get("error"):
+        raise HTTPException(status_code=500, detail=data.get("message", "Failed to get live weather"))
+    return data
 
-    if weather_data is None:
-        return JSONResponse(content={'error': 'Could not retrieve weather data.'}, status_code=400)
-
-    if 'error' in weather_data:
-        return JSONResponse(content=weather_data, status_code=400)
-
-    return JSONResponse(content=weather_data)
-
-@router.get("/stations")
-async def get_stations(db: AsyncDatabase = Depends(get_db)):
-    """Get all weather stations from the database."""
-    stations = await db.get_all_stations()
-    return JSONResponse(content=stations)
-
-@router.get("/station_dates")
-async def get_station_dates(station_id: int, db: AsyncDatabase = Depends(get_db)):
-    """Get the date range for a specific station."""
-    date_range = await db.get_station_date_range(station_id)
-    return JSONResponse(content=date_range)
-
-@router.get("/geocode")
-async def geocode(address: str, db: AsyncDatabase = Depends(get_db)):
-    """Geocode an address to get its latitude and longitude."""
+@router.get("/all_stations", response_model=Dict[str, Any])
+async def get_all_stations_endpoint(db: Database = Depends(get_db)):
     analysis = Analysis(db)
-    try:
-        location = analysis.geolocator.geocode(address)
-        if location:
-            return JSONResponse(content={'latitude': location.latitude, 'longitude': location.longitude})
-        else:
-            return JSONResponse(content={'error': 'Address not found'}, status_code=404)
-    except Exception as e:
-        return JSONResponse(content={'error': str(e)}, status_code=500)
+    stations = await analysis.get_all_stations()
+    return {"status": "success", "stations": stations}
 
-@router.post("/plot_data")
-async def plot_data(location: str = Form(...), start_date: str = Form(...), end_date: str = Form(...), parameter: str = Form(...), db: AsyncDatabase = Depends(get_db)):
-    """
-    Generate a plot for a specific location, date range and parameter.
-    """
-    if not location or not start_date or not end_date or not parameter:
-        return JSONResponse(content={'error': 'Invalid input'}, status_code=400)
-
-    try:
-        start_date_obj = datetime.strptime(start_date, '%Y-%m-%d')
-        end_date_obj = datetime.strptime(end_date, '%Y-%m-%d')
-    except ValueError:
-        return JSONResponse(content={'error': 'Invalid date format. Use YYYY-MM-DD.'}, status_code=400)
-
-    if start_date_obj > end_date_obj:
-        return JSONResponse(content={'error': 'Start date cannot be after end date.'}, status_code=400)
-
+@router.get("/nearest_stations", response_model=Dict[str, Any])
+async def get_nearest_stations_endpoint(lat: float, lon: float, db: Database = Depends(get_db)):
     analysis = Analysis(db)
-    
-    parameters = {
-        "tmk": ("Mean Temperature", "°C"),
-        "txk": ("Maximum Temperature", "°C"),
-        "tnk": ("Minimum Temperature", "°C"),
-        "upm": ("Mean Humidity", "%"),
-        "vpm": ("Mean Vapor Pressure", "hPa"),
-        "pm": ("Mean Pressure", "hPa"),
-        "rsk": ("Daily Precipitation", "mm"),
-        "sdk": ("Daily Sunshine Duration", "h")
-    }
+    stations = await analysis.get_nearest_stations(lat, lon)
+    return {"status": "success", "stations": stations}
 
-    if parameter not in parameters:
-        return JSONResponse(content={'error': 'Invalid parameter.'}, status_code=400)
+@router.get("/historical_data", response_model=Dict[str, Any])
+async def get_historical_data_endpoint(
+    station_id: int,
+    start_date: date,
+    end_date: date,
+    aggregation: str = Query("yearly", enum=["daily", "monthly", "yearly"]),
+    db: Database = Depends(get_db)
+):
+    analysis = Analysis(db)
+    data = await analysis.get_historical_data(station_id, start_date, end_date, aggregation)
+    return {"aggregation": aggregation, "rows": data}
 
-    dates = []
-    values = []
-    current_date = start_date_obj
-    while current_date <= end_date_obj:
-        date_str = current_date.strftime('%Y-%m-%d')
-        data = await analysis.interpolate_weather_data(location, date_str)
-        if data and 'error' in data:
-            return JSONResponse(content=data, status_code=400)
-        if data and data.get(parameter) is not None:
-            dates.append(current_date)
-            values.append(data[parameter])
-        current_date += timedelta(days=1)
-
-    if not dates:
-        return JSONResponse(content={'error': 'No weather data available for the specified period.'}, status_code=400)
-
-    # Generate plot
-    plt.figure(figsize=(10, 6))
-    plt.plot(dates, values, marker='o', linestyle='-')
-    plt.xlabel('Date')
-    plt.ylabel(f'{parameters[parameter][0]} ({parameters[parameter][1]})')
-    plt.title(f'{parameters[parameter][0]} for {location} ({start_date} to {end_date})')
-    plt.grid(True)
-    plt.tight_layout()
-
-    # Save plot to a BytesIO object
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png')
-    buffer.seek(0)
-    plt.close() # Close the plot to free up memory
-
-    # Encode image to base64
-    plot_base64 = base64.b64encode(buffer.getvalue()).decode('utf-8')
-
-    return JSONResponse(content={'plot': plot_base64})
-
+@router.get("/chart_data", response_model=ChartData)
+async def get_chart_data_endpoint(
+    station_id: int,
+    start_date: date,
+    end_date: date,
+    metric: str = Query(..., enum=["tmk", "txk", "tnk", "rsk", "upm"]),
+    aggregation: str = Query(..., enum=["daily", "monthly", "yearly"]),
+    db: Database = Depends(get_db)
+):
+    analysis = Analysis(db)
+    data = await analysis.get_chart_data(station_id, start_date, end_date, metric, aggregation)
+    return data

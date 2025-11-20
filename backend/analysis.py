@@ -1,173 +1,83 @@
+import requests
 from geopy.geocoders import Nominatim
-from geopy.distance import geodesic
-from backend.database import AsyncDatabase
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, date
+from typing import Dict, Any, List
+
+from backend.database import Database
+
+METRIC_LABELS = {
+    "tmk": "Mean Temperature (°C)",
+    "txk": "Max Temperature (°C)",
+    "tnk": "Min Temperature (°C)",
+    "rsk": "Precipitation (mm)",
+    "upm": "Humidity (%)",
+}
 
 class Analysis:
-    def __init__(self, db: AsyncDatabase):
+    def __init__(self, db: Database):
         self.db = db
-        self.geolocator = Nominatim(user_agent="wetterprojekt")
+        self.geolocator = Nominatim(user_agent="wetterprojekt_analysis")
 
-    @staticmethod
-    def calculate_distance(coord1, coord2):
-        """Calculates the distance between two coordinates in kilometers."""
-        return geodesic(coord1, coord2).kilometers
-
-    async def find_nearest_stations(self, address: str, num_stations: int = 5):
+    async def get_live_weather(self, lat: float, lon: float) -> Dict[str, Any]:
         """
-        Find the nearest weather stations to a given address.
-
-        :param address: The address to geocode.
-        :param num_stations: The number of nearest stations to return.
-        :return: A list of tuples containing (station_id, name, distance_km).
+        Fetches live weather from Open-Meteo API and reverse geocodes the location.
         """
+        # Reverse geocode
         try:
-            location = self.geolocator.geocode(address)
-            if not location:
-                raise ValueError(f"Could not geocode address '{address}'. Please provide a more specific address.")
-        except Exception as e:
-            raise ValueError(f"An error occurred during geocoding: {e}")
+            location = self.geolocator.reverse((lat, lon), exactly_one=True, language='en')
+            location_name = location.address if location else "Unknown location"
+        except Exception:
+            location_name = "Unknown location"
 
-        target_coords = (location.latitude, location.longitude)
-        all_stations = await self.db.get_all_stations()
-
-        stations_with_distance = []
-        for station in all_stations:
-            station_id, lat, lon, name = station
-            if lat is None or lon is None:
-                continue
-            station_coords = (lat, lon)
-            distance = self.calculate_distance(target_coords, station_coords)
-            stations_with_distance.append((station_id, name, distance))
-
-        # Sort stations by distance
-        stations_with_distance.sort(key=lambda x: x[2])
-
-        return stations_with_distance[:num_stations]
-
-    async def interpolate_weather_data(self, address: str, date: str):
-        """
-        Interpolate weather data for a given address and date.
-
-        :param address: The address to interpolate data for.
-        :param date: The date for which to interpolate data ('YYYY-MM-DD').
-        :return: The interpolated temperature.
-        """
+        # Fetch from Open-Meteo
         try:
-            nearest_stations = await self.find_nearest_stations(address)
-        except ValueError as e:
-            return {'error': str(e)}
-            
-        if not nearest_stations:
-            return None
+            url = "https://api.open-meteo.com/v1/forecast"
+            params = {
+                "latitude": lat,
+                "longitude": lon,
+                "current": "temperature_2m,relative_humidity_2m,rain,wind_speed_10m",
+            }
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            current = data['current']
 
-        station_data = []
-        for station_id, name, distance in nearest_stations:
-            weather_data = await self.db.get_weather_data(station_id, date)
-            if weather_data:
-                station_data.append({
-                    'distance': distance,
-                    'weather_data': weather_data
-                })
+            return {
+                "error": False,
+                "latitude": lat,
+                "longitude": lon,
+                "station_name": location_name,
+                "temperature": current.get("temperature_2m"),
+                "relative_humidity": current.get("relative_humidity_2m"),
+                "wind_speed_10m": current.get("wind_speed_10m"),
+                "rain": current.get("rain"),
+                "timestamp": datetime.fromisoformat(current.get("time")).isoformat() + "Z",
+            }
+        except requests.exceptions.RequestException as e:
+            return {"error": True, "message": f"Failed to fetch from Open-Meteo: {e}"}
+        except (KeyError, TypeError) as e:
+            return {"error": True, "message": f"Error processing weather data: {e}"}
 
-        if not station_data:
-            print("No weather data available for the nearest stations on the given date.")
-            return None
+    async def get_all_stations(self) -> List[Dict[str, Any]]:
+        stations = await self.db.get_all_stations()
+        return stations
 
-        # Inverse Distance Weighting for each parameter
-        interpolated_data = {}
-        parameters = await self.db.get_all_parameters()
-        for param_code, param_name, param_unit in parameters:
-            total_weight = 0
-            weighted_sum = 0
-            for data in station_data:
-                if data['weather_data'].get(param_code) is not None:
-                    if data['distance'] == 0: # If the location is at a station, return its temperature
-                        weighted_sum = data['weather_data'][param_code]
-                        total_weight = 1
-                        break
-                    weight = 1 / data['distance']
-                    weighted_sum += weight * data['weather_data'][param_code]
-                    total_weight += weight
-            
-            if total_weight > 0:
-                interpolated_data[param_code] = weighted_sum / total_weight
-            else:
-                interpolated_data[param_code] = None
+    async def get_nearest_stations(self, lat: float, lon: float) -> List[Dict[str, Any]]:
+        stations = await self.db.get_stations_with_distance(lat, lon, limit=5)
+        return stations
 
-        return interpolated_data
-
-    async def get_daily_mean_temperature(self, station_id: int, date: str):
-        """
-        Get the daily mean temperature for a given station and date.
-
-        :param station_id: The ID of the station.
-        :param date: The date to get the mean temperature for ('YYYY-MM-DD').
-        :return: The mean temperature.
-        """
-        weather_data = await self.db.get_weather_data(station_id, date)
-        if weather_data and 'TMP' in weather_data:
-            return weather_data['TMP']
-        return None
-
-    async def get_monthly_aggregation(self, station_id: int, year: int, month: int):
-        """
-        Get the monthly aggregated temperature for a given station, year, and month.
-
-        :param station_id: The ID of the station.
-        :param year: The year to get the aggregated temperature for.
-        :param month: The month to get the aggregated temperature for.
-        :return: The aggregated temperature.
-        """
-        weather_data = await self.db.get_monthly_weather_data(station_id, year, month)
-        if weather_data:
-            # Assuming 'TMP' is the parameter for temperature
-            temperatures = [row['TMP'] for row in weather_data if 'TMP' in row]
-            if temperatures:
-                return sum(temperatures) / len(temperatures)
-        return None
-
-    async def get_yearly_aggregation(self, station_id: int, year: int):
-        """
-        Get the yearly aggregated temperature for a given station and year.
-
-        :param station_id: The ID of the station.
-        :param year: The year to get the aggregated temperature for.
-        :return: The aggregated temperature.
-        """
-        weather_data = await self.db.get_yearly_weather_data(station_id, year)
-        if weather_data:
-            # Assuming 'TMP' is the parameter for temperature
-            temperatures = [row['TMP'] for row in weather_data if 'TMP' in row]
-            if temperatures:
-                return sum(temperatures) / len(temperatures)
-        return None
-        
-    async def get_weather_data_for_period(self, address: str, start_date: str, end_date: str):
-        """
-        Get weather data for a given address and period.
-
-        :param address: The address to get data for.
-        :param start_date: The start date of the period ('YYYY-MM-DD').
-        :param end_date: The end date of the period ('YYYY-MM-DD').
-        :return: A list of lists with the weather data.
-        """
-        start = datetime.strptime(start_date, '%Y-%m-%d')
-        end = datetime.strptime(end_date, '%Y-%m-%d')
-
-        # Get all parameters from the database
-        parameters = await self.db.get_all_parameters()
-        header = ['Date'] + [p[1] for p in parameters]
-        data = [header]
-
-        current_date = start
-        while current_date <= end:
-            date_str = current_date.strftime('%Y-%m-%d')
-            interpolated_data = await self.interpolate_weather_data(address, date_str)
-            if interpolated_data:
-                row = [date_str] + [interpolated_data.get(p[0]) for p in parameters]
-                data.append(row)
-            current_date += timedelta(days=1)
-
+    async def get_historical_data(self, station_id: int, start_date: date, end_date: date, aggregation: str) -> List[Dict[str, Any]]:
+        data = await self.db.get_historical_data(station_id, start_date, end_date, aggregation)
         return data
+
+    async def get_chart_data(self, station_id: int, start_date: date, end_date: date, metric: str, aggregation: str) -> Dict[str, Any]:
+        rows = await self.db.get_chart_data(station_id, start_date, end_date, metric, aggregation)
+        return {
+            "metric": metric,
+            "metric_label": METRIC_LABELS.get(metric.lower(), "Unknown Metric"),
+            "station_id": station_id,
+            "aggregation": aggregation,
+            "start_date": start_date,
+            "end_date": end_date,
+            "rows": rows,
+        }

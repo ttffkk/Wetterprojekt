@@ -17,12 +17,19 @@ class Database:
             specified by db_config
         """
         try:
+            # Fallback to environment variables if not in config
+            host = self.db_config.get('host') or os.environ.get('DB_HOST')
+            port = self.db_config.get('port') or os.environ.get('DB_PORT')
+            user = self.db_config.get('user') or os.environ.get('DB_USER')
+            password = self.db_config.get('password') or os.environ.get('DB_PASSWORD')
+            dbname = self.db_config.get('dbname') or os.environ.get('DB_NAME')
+
             self.conn = psycopg.connect(
-                host=self.db_config['host'],
-                port=self.db_config['port'],
-                user=self.db_config['user'],
-                password=self.db_config['password'],
-                dbname=self.db_config['dbname']
+                host=host,
+                port=port,
+                user=user,
+                password=password,
+                dbname=dbname
             )
         except psycopg.Error as e:
             self.logger.error(f"Database connection error: {e}")
@@ -50,76 +57,31 @@ class Database:
         except FileNotFoundError:
             self.logger.error(f"Error: SQL file not found at {sql_file_path}")
 
-    def get_all_stations(self):
-        """Query all rows in the Station table"""
-        with self.conn.cursor() as cur:
-            cur.execute("SELECT Station_ID, geoBreite, geoLaenge, Stationsname FROM Station")
-            rows = cur.fetchall()
-            return rows
-
-    def get_weather_data(self, station_id: int, date: str):
-        """
-        Query weather data for a specific station and date.
-        """
-        with self.conn.cursor() as cur:
-            date_formated = date.replace("-", "")
-            cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM = %s", (station_id, date_formated))
-            row = cur.fetchone()
-            if row:
-                columns = [description[0] for description in cur.description]
-                return dict(zip(columns, row))
-            return None
-
-    def get_monthly_weather_data(self, station_id: int, year: int, month: int):
-        """
-        Query weather data for a specific station, year, and month.
-        """
-        with self.conn.cursor() as cur:
-            date_pattern = f'{year}{month:02d}%'
-            cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
-            rows = cur.fetchall()
-            if rows:
-                columns = [description[0] for description in cur.description]
-                return [dict(zip(columns, row)) for row in rows]
-            return []
-
-    def get_yearly_weather_data(self, station_id: int, year: int):
-        """
-        Query weather data for a specific station and year.
-        """
-        with self.conn.cursor() as cur:
-            date_pattern = f'{year}%'
-            cur.execute("SELECT * FROM Measurement WHERE Station_ID = %s AND MESS_DATUM LIKE %s", (station_id, date_pattern))
-            rows = cur.fetchall()
-            if rows:
-                columns = [description[0] for description in cur.description]
-                return [dict(zip(columns, row)) for row in rows]
-            return []
-
     def insert_csv(self, csv_filepath, delimiter):
         """
         Reads data from a given CSV file path and inserts it into the
-        'Station' or 'Measurement' table.
+        'measurements' table.
         """
         try:
             with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
                 header = [h.strip() for h in f.readline().split(delimiter)]
 
             if 'MESS_DATUM' in header and 'STATIONS_ID' in header:
-                table_name = 'measurement'
+                table_name = 'measurements'
                 df = pd.read_csv(csv_filepath, delimiter=delimiter, na_values=str(self.na_value), encoding=self.file_encoding)
                 df.rename(columns=lambda c: c.strip(), inplace=True)
-                df.rename(columns={'STATIONS_ID': 'Station_ID'}, inplace=True)
+                df.rename(columns={'STATIONS_ID': 'station_id'}, inplace=True)
 
                 if 'eor' in df.columns:
                     df.drop(columns=['eor'], inplace=True)
 
-                if 'RSKF' in df.columns:
-                    df['RSKF'] = pd.to_numeric(df['RSKF'], errors='coerce').astype('Int64')
-                if 'QN_3' in df.columns:
-                    df['QN_3'] = pd.to_numeric(df['QN_3'], errors='coerce').astype('Int64')
-                if 'QN_4' in df.columns:
-                    df['QN_4'] = pd.to_numeric(df['QN_4'], errors='coerce').astype('Int64')
+                # Ensure correct types for specific columns before insertion
+                for col in ['RSKF', 'QN_3', 'QN_4']:
+                    if col in df.columns:
+                        df[col] = pd.to_numeric(df[col], errors='coerce').astype('Int64')
+                
+                df['MESS_DATUM'] = pd.to_datetime(df['MESS_DATUM'], format='%Y%m%d').dt.strftime('%Y-%m-%d')
+
 
                 df.columns = df.columns.str.lower()
                 db_cols = [col for col in df.columns if col in [
@@ -144,10 +106,8 @@ class Database:
                         self.conn.rollback()
                         self.logger.error(f"Error using COPY for {os.path.basename(csv_filepath)}: {e}")
                         self.logger.info("Falling back to row-by-row insertion...")
-                        self._insert_csv_row_by_row(csv_filepath, delimiter)
+                        self._insert_csv_row_by_row(df, db_cols)
 
-            elif 'Stationsname' in header:
-                self._insert_csv_row_by_row(csv_filepath, delimiter)
             else:
                 self.logger.error(f"Error: Cannot determine table for CSV {csv_filepath}. Headers: {header}")
                 return
@@ -157,43 +117,34 @@ class Database:
         except Exception as e:
             self.logger.error(f"An error occurred while processing {csv_filepath}: {e}")
 
-    def _insert_csv_row_by_row(self, csv_filepath, delimiter):
+    def _insert_csv_row_by_row(self, df, db_cols):
         """
-        Private helper for row-  by-row insertion logic.
+        Private helper for row-by-row insertion logic using the dataframe.
         """
-        with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            header = [h.strip() for h in next(reader)]
+        table_name = 'measurements'
+        
+        with self.conn.cursor() as cur:
+            for row in df.itertuples(index=False, name=None):
+                row_dict = dict(zip(df.columns, row))
+                
+                # Construct the insert statement dynamically
+                columns = [col for col in db_cols if pd.notna(row_dict.get(col))]
+                if not columns:
+                    continue
+                
+                placeholders = ', '.join(['%s'] * len(columns))
+                values = [row_dict[col] for col in columns]
+                
+                sql = f"INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders})"
+                
+                try:
+                    cur.execute(sql, values)
+                except psycopg.IntegrityError as e:
+                    self.logger.warning(f"Skipping row due to IntegrityError: {e}")
+                    self.conn.rollback()
+                except psycopg.Error as e:
+                    self.logger.error(f"An error occurred during row-by-row insert: {e}")
+                    self.conn.rollback()
+            self.conn.commit()
+        self.logger.info(f"Data successfully inserted into {table_name} (row-by-row).")
 
-        table_name, sql, eor_index = None, None, -1
-        if 'MESS_DATUM' in header and 'STATIONS_ID' in header:
-            table_name = 'Measurement'
-            db_header = [col.replace('STATIONS_ID', 'Station_ID') for col in header if col != 'eor']
-            columns = ', '.join(db_header)
-            placeholders = ', '.join(['%s'] * len(db_header))
-            sql = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders})"
-            if 'eor' in header: eor_index = header.index('eor')
-        elif 'Stationsname' in header:
-            table_name = 'Station'
-            columns = ', '.join(header)
-            placeholders = ', '.join(['%s'] * len(header))
-            sql = f"INSERT INTO Station ({columns}) VALUES ({placeholders})"
-        else:
-            return
-
-        with open(csv_filepath, 'r', encoding=self.file_encoding) as f:
-            reader = csv.reader(f, delimiter=delimiter)
-            next(reader)  # Skip header
-            with self.conn.cursor() as cur:
-                for row in reader:
-                    if not row: continue
-                    if eor_index != -1: del row[eor_index]
-                    
-                    cleaned_row = [None if (field.strip() == str(self.na_value) or field.strip() == '') else field.strip() for field in row]
-                    try:
-                        cur.execute(sql, cleaned_row)
-                    except psycopg.IntegrityError as e:
-                        self.logger.warning(f"Skipping row due to IntegrityError: {e}")
-                        self.conn.rollback()
-                self.conn.commit()
-            self.logger.info(f"Data from {os.path.basename(csv_filepath)} successfully inserted into {table_name} (row-by-row).")
