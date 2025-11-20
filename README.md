@@ -104,9 +104,11 @@ If you prefer to run the application without Docker, follow these steps.
 │   └── database.py
 ├── web/
 │   ├── __init__.py
-│   ├── routers.py
-│   └── templates/
-│       └── index.html
+│   └── routers.py
+├── frontend/
+│   ├── index.html
+│   ├── script.js
+│   └── styles.css
 ├── .gitignore
 ├── config.yaml
 ├── Create_table.sql
