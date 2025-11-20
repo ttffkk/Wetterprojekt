@@ -67,11 +67,30 @@ class Analysis:
         return stations
 
     async def get_historical_data(self, station_id: int, start_date: date, end_date: date, aggregation: str) -> List[Dict[str, Any]]:
-        data = await self.db.get_historical_data(station_id, start_date, end_date, aggregation)
+        metrics = {
+            "avg_temp": "AVG(tmk)",
+            "max_temp": "MAX(txk)",
+            "min_temp": "MIN(tnk)",
+            "precipitation": "SUM(rsk)",
+            "avg_humidity": "AVG(upm)",
+        }
+        data = await self.db.get_aggregated_data(station_id, start_date, end_date, aggregation, metrics)
         return data
 
     async def get_chart_data(self, station_id: int, start_date: date, end_date: date, metric: str, aggregation: str) -> Dict[str, Any]:
-        rows = await self.db.get_chart_data(station_id, start_date, end_date, metric, aggregation)
+        metric_map = {
+            "tmk": "AVG(tmk)",
+            "txk": "MAX(txk)",
+            "tnk": "MIN(tnk)",
+            "rsk": "SUM(rsk)",
+            "upm": "AVG(upm)",
+        }
+        if metric.lower() not in metric_map:
+            raise ValueError("Invalid metric")
+
+        metrics = {"value": metric_map[metric.lower()]}
+        rows = await self.db.get_aggregated_data(station_id, start_date, end_date, aggregation, metrics)
+        
         return {
             "metric": metric,
             "metric_label": METRIC_LABELS.get(metric.lower(), "Unknown Metric"),

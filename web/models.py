@@ -2,17 +2,6 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date, datetime
 
-class Station(BaseModel):
-    STATIONS_ID: int
-    VON_DATUM: int
-    BIS_DATUM: int
-    GEOBREITE: float
-    GEOLAENGE: float
-    STATIONSNAME: str
-
-class StationWithDistance(Station):
-    distance_km: float
-
 class LiveWeather(BaseModel):
     error: bool = False
     latitude: float

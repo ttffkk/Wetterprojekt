@@ -48,7 +48,7 @@ class Database:
             rows = await connection.fetch(query, lat, lon, limit)
             return [dict(row) for row in rows]
 
-    async def get_historical_data(self, station_id: int, start_date: date, end_date: date, aggregation: str) -> List[Dict[str, Any]]:
+    async def get_aggregated_data(self, station_id: int, start_date: date, end_date: date, aggregation: str, metrics: Dict[str, str]) -> List[Dict[str, Any]]:
         if aggregation == 'daily':
             group_by_clause = "mess_datum"
         elif aggregation == 'monthly':
@@ -58,14 +58,11 @@ class Database:
         else:
             raise ValueError("Invalid aggregation level")
 
+        metric_selections = [f"{func} as {alias}" for alias, func in metrics.items()]
         query = f"""
             SELECT
                 {group_by_clause} as period,
-                AVG(tmk) as avg_temp,
-                MAX(txk) as max_temp,
-                MIN(tnk) as min_temp,
-                SUM(rsk) as precipitation,
-                AVG(upm) as avg_humidity
+                {', '.join(metric_selections)}
             FROM measurements
             WHERE station_id = $1 AND mess_datum BETWEEN $2 AND $3
             GROUP BY period
@@ -83,54 +80,10 @@ class Database:
                     row_dict['period'] = row_dict['period'].strftime('%Y-%m')
                 elif aggregation == 'yearly':
                     row_dict['period'] = row_dict['period'].strftime('%Y')
-                formatted_rows.append(row_dict)
-            return formatted_rows
-
-    async def get_chart_data(self, station_id: int, start_date: date, end_date: date, metric: str, aggregation: str) -> List[Dict[str, Any]]:
-        if aggregation == 'daily':
-            group_by_clause = "mess_datum"
-        elif aggregation == 'monthly':
-            group_by_clause = "DATE_TRUNC('month', mess_datum)"
-        elif aggregation == 'yearly':
-            group_by_clause = "DATE_TRUNC('year', mess_datum)"
-        else:
-            raise ValueError("Invalid aggregation level")
-
-        # Mapping from metric code to SQL aggregation function
-        metric_map = {
-            "tmk": "AVG(tmk)",
-            "txk": "MAX(txk)",
-            "tnk": "MIN(tnk)",
-            "rsk": "SUM(rsk)",
-            "upm": "AVG(upm)",
-        }
-        
-        if metric.lower() not in metric_map:
-            raise ValueError("Invalid metric")
-
-        query = f"""
-            SELECT
-                {group_by_clause} as period,
-                {metric_map[metric.lower()]} as value
-            FROM measurements
-            WHERE station_id = $1 AND mess_datum BETWEEN $2 AND $3
-            GROUP BY period
-            ORDER BY period;
-        """
-        async with self.pool.acquire() as connection:
-            rows = await connection.fetch(query, station_id, start_date, end_date)
-            # Format the period based on aggregation
-            formatted_rows = []
-            for row in rows:
-                row_dict = dict(row)
-                if row_dict.get('value') is None:
-                    continue # Skip rows where the metric value is null
                 
-                if aggregation == 'daily':
-                    row_dict['period'] = row_dict['period'].strftime('%Y-%m-%d')
-                elif aggregation == 'monthly':
-                    row_dict['period'] = row_dict['period'].strftime('%Y-%m')
-                elif aggregation == 'yearly':
-                    row_dict['period'] = row_dict['period'].strftime('%Y')
+                # Skip rows where all metric values are null
+                if all(row_dict.get(alias) is None for alias in metrics.keys()):
+                    continue
+                
                 formatted_rows.append(row_dict)
             return formatted_rows
