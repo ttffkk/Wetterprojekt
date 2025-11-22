@@ -191,7 +191,7 @@ class StationImporter:
             df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
 
             # Drop rows with invalid station_id
-df = df.dropna(subset=['station_id'])
+            df = df.dropna(subset=['station_id'])
             df['station_id'] = df['station_id'].astype(int)
 
             # --- Database Insertion ---

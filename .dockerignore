@@ -9,6 +9,5 @@ tests/
 Dockerfile*
 docker-compose.yml
 README.md
-config.yaml
-Create_table.sql
+
 .gitignore

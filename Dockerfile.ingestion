@@ -8,12 +8,13 @@ WORKDIR /app
 COPY requirements.txt setup.py ./
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt \
+RUN pip install --no-cache-dir -ra requirements.txt \
 && pip install -e .
 
 
 # Copy the rest of the application
-COPY . .
+COPY config.yaml Create_table.sql main.py ./
+COPY data_ingestion ./data_ingestion/
 
 # Entrypoint for the ingestion service
 # This container will run the data ingestion command
