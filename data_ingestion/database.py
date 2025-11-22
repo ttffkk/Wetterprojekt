@@ -3,6 +3,7 @@ import os
 import csv
 import pandas as pd
 import io
+import time
 
 class Database:
     def __init__(self, db_config, na_value, file_encoding, logger):
@@ -16,24 +17,36 @@ class Database:
         """ create a database connection to the PostgreSQL database
             specified by db_config
         """
-        try:
-            # Fallback to environment variables if not in config
-            host = self.db_config.get('host') or os.environ.get('DB_HOST')
-            port = self.db_config.get('port') or os.environ.get('DB_PORT')
-            user = self.db_config.get('user') or os.environ.get('DB_USER')
-            password = self.db_config.get('password') or os.environ.get('DB_PASSWORD')
-            dbname = self.db_config.get('dbname') or os.environ.get('DB_NAME')
+        retries = 5
+        delay = 5
+        for i in range(retries):
+            try:
+                # Fallback to environment variables if not in config
+                host = self.db_config.get('host') or os.environ.get('DB_HOST')
+                port = self.db_config.get('port') or os.environ.get('DB_PORT')
+                user = self.db_config.get('user') or os.environ.get('DB_USER')
+                password = self.db_config.get('password') or os.environ.get('DB_PASSWORD')
+                dbname = self.db_config.get('dbname') or os.environ.get('DB_NAME')
 
-            self.conn = psycopg.connect(
-                host=host,
-                port=port,
-                user=user,
-                password=password,
-                dbname=dbname
-            )
-        except psycopg.Error as e:
-            self.logger.error(f"Database connection error: {e}")
-            raise
+                self.conn = psycopg.connect(
+                    host=host,
+                    port=port,
+                    user=user,
+                    password=password,
+                    dbname=dbname
+                )
+                self.logger.info("Database connection established.")
+                return # connection successful
+            except psycopg.OperationalError as e:
+                if "the database system is starting up" in str(e) and i < retries - 1:
+                    self.logger.warning(f"Database is starting up. Retrying in {delay} seconds... ({i+1}/{retries})")
+                    time.sleep(delay)
+                else:
+                    self.logger.error(f"Database connection error: {e}")
+                    raise
+        # If loop finishes without connecting
+        self.logger.error("Could not connect to the database after several retries.")
+        raise psycopg.OperationalError("Could not connect to the database.")
 
     def close_connection(self):
         """ close the database connection """

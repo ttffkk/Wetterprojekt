@@ -4,23 +4,22 @@ FROM python:3.9-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Create a non-root user and group
-RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
-    && chown -R appuser:appgroup /app
-# Switch to the non-root user
-USER appuser
-
 # Copy files required for installation
 COPY requirements.txt setup.py ./
 
-# Install dependencies
-RUN pip install --no-cache-dir -ra requirements.txt \
-&& pip install -e .
-
+# Install dependencies as root
+RUN pip install --no-cache-dir -r requirements.txt && pip install -e .
 
 # Copy the rest of the application
-COPY config.yaml Create_table.sql main.py ./
+COPY config.yaml Create_table.sql main.py .
 COPY data_ingestion ./data_ingestion/
+
+# Create a non-root user and group and set ownership
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser \
+    && chown -R appuser:appgroup /app
+
+# Switch to the non-root user
+USER appuser
 
 # Entrypoint for the ingestion service
 # This container will run the data ingestion command
