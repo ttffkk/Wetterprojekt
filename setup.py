@@ -12,7 +12,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'dwd-ingest=data_ingestion.cli:app',
+            'weather-ingest=data_ingestion.cli:app',
         ],
     },
 )
