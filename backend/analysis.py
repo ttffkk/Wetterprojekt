@@ -18,46 +18,6 @@ class Analysis:
         self.db = db
         self.geolocator = Nominatim(user_agent="wetterprojekt_analysis")
 
-    async def get_live_weather(self, lat: float, lon: float) -> Dict[str, Any]:
-        """
-        Fetches live weather from Open-Meteo API and reverse geocodes the location.
-        """
-        # Reverse geocode
-        try:
-            location = self.geolocator.reverse((lat, lon), exactly_one=True, language='en')
-            location_name = location.address if location else "Unknown location"
-        except Exception:
-            location_name = "Unknown location"
-
-        # Fetch from Open-Meteo
-        try:
-            url = "https://api.open-meteo.com/v1/forecast"
-            params = {
-                "latitude": lat,
-                "longitude": lon,
-                "current": "temperature_2m,relative_humidity_2m,rain,wind_speed_10m",
-            }
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            current = data['current']
-
-            return {
-                "error": False,
-                "latitude": lat,
-                "longitude": lon,
-                "station_name": location_name,
-                "temperature": current.get("temperature_2m"),
-                "relative_humidity": current.get("relative_humidity_2m"),
-                "wind_speed_10m": current.get("wind_speed_10m"),
-                "rain": current.get("rain"),
-                "timestamp": datetime.fromisoformat(current.get("time")).isoformat() + "Z",
-            }
-        except requests.exceptions.RequestException as e:
-            return {"error": True, "message": f"Failed to fetch from Open-Meteo: {e}"}
-        except (KeyError, TypeError) as e:
-            return {"error": True, "message": f"Error processing weather data: {e}"}
-
     async def get_all_stations(self) -> List[Dict[str, Any]]:
         stations = await self.db.get_all_stations()
         return stations

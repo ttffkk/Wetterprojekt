@@ -17,28 +17,6 @@ class TestApi(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.client = TestClient(app)
 
-    @patch('backend.analysis.Analysis.get_live_weather')
-    async def test_get_live_weather(self, mock_get_live_weather):
-        mock_get_live_weather.return_value = {
-            "error": False,
-            "latitude": 52.52,
-            "longitude": 13.4,
-            "station_name": "Berlin",
-            "temperature": 15.0,
-            "relative_humidity": 60.0,
-            "wind_speed_10m": 10.0,
-            "rain": 0.0,
-            "timestamp": "2025-11-20T12:00:00Z",
-        }
-        
-        async with AsyncClient(app=app, base_url="http://test") as ac:
-            response = await ac.get("/api/live_weather?lat=52.52&lon=13.4")
-
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data['station_name'], "Berlin")
-        self.assertEqual(data['temperature'], 15.0)
-
     @patch('backend.database.Database.get_all_stations')
     async def test_get_all_stations(self, mock_get_all_stations):
         mock_get_all_stations.return_value = [
