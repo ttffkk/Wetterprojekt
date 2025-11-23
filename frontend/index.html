@@ -35,7 +35,7 @@
                         </div>
                     </div>
                     <div class="form-check form-switch mt-3">
-                        <input class="form-check-input" type="checkbox" role="switch" id="toggleStations" v-model="showStations">
+                        <input class="form-check-input" type="checkbox" role="switch" id="toggleStations" v-model="showStations" v-bind:aria-checked="showStations.toString()">
                         <label class="form-check-label" for="toggleStations">Show All Stations</label>
                     </div>
                 </div>
