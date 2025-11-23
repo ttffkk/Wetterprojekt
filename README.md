@@ -1,100 +1,82 @@
 # DWD Weather Analysis Application
 
-A Python-based web application for analyzing historical weather data from the German Weather Service (DWD).
+A Python-based web application for analyzing historical weather data from the German Weather Service (DWD), fully containerized with Docker.
 
 ## Features
 
-*   **Automated Data Import**: Downloads and processes historical weather data directly from the DWD archive.
-*   **Database Storage**: Stores weather data in a local SQLite database for efficient access.
-*   **Flexible Analysis**: Allows for analysis of weather data based on custom time periods and locations.
-*   **Geospatial Analysis**: Interpolates weather data for any address in Germany, even if there is no direct weather station.
-*   **Data Visualization**: Presents results in both tabular and graphical formats.
+*   **Automated Data Import**: Downloads and processes historical weather data directly from the DWD's open data server.
+*   **PostgreSQL Database**: Stores weather data in a robust PostgreSQL database for efficient querying and analysis.
+*   **Geospatial Analysis**: Interpolates weather data for any address in Germany using the nearest weather stations.
+*   **Flexible Analysis**: Provides endpoints for analyzing weather data by custom time periods and locations.
+*   **Data Visualization**: Generates temperature plots for specified locations and date ranges.
+*   **RESTful API**: A modern, interactive API built with FastAPI, with automatic documentation.
+*   **Modern Frontend**: A Vue.js-based frontend for interacting with the API.
+*   **Dockerized Environment**: Comes with a complete Docker setup for easy deployment and consistent development environments.
 
-## Getting Started
+## Getting Started with Docker
+
+This is the recommended way to run the application.
 
 ### Prerequisites
 
-*   Python 3.x
-*   pip
+*   Docker
+*   Docker Compose
 
-### Installation
+### Installation & Usage
 
 1.  **Clone the repository:**
     ```sh
     git clone https://github.com/ttffkk/Wetterprojekt.git
-    cd <repository-directory>
+    cd Wetterprojekt
     ```
 
-2.  **Create and activate a virtual environment:**
-    *   On Windows:
-        ```sh
-        python -m venv .venv
-        .venv\Scripts\activate
-        ```
-    *   On macOS and Linux:
-        ```sh
-        python -m venv .venv
-        source .venv/bin/activate
-        ```
-
-3.  **Install the required packages:**
+2.  **Build and run the services:**
+    This command will build the Docker images for the web and ingestion services, and start the web server and the PostgreSQL database.
     ```sh
-    pip install -r requirements.txt
+    docker-compose up --build -d
+    ```
+    The `-d` flag runs the containers in detached mode.
+
+4.  **Run the Data Import:**
+    With the services running, execute the data ingestion process. This will connect to the database inside the Docker network and start downloading and importing the weather data. This process can take a long time.
+    ```sh
+    docker-compose run --rm ingestion
     ```
 
-## Usage
-
-To run the data import process, execute the main application file:
-
-```sh
-python app.py
-```
-
-This will download the latest data, process it, and store it in the SQLite database located in the `data/` directory.
-
-*(Note: The web interface for this application is still under development.)*
+5.  **Access the Application:**
+    *   **Web Interface**: `http://localhost:8080`
+    *   **API Docs (Swagger UI)**: `http://localhost:8000/docs`
 
 ## Project Structure
 
 ```
 .
-├── app.py                  # Main application entry point
-├── config.yaml             # Application configuration
-├── Create_table.sql        # SQL schema for the database
-├── requirements.txt        # Python dependencies
-├── wetter/                 # Module for downloading and processing data
-│   ├── downloader.py
-│   └── processor.py
-├── database/               # Module for database interactions
-│   ├── database.py
-│   └── importer.py
-├── tests/                  # Unit and integration tests
-└── data/                   # Directory for data files and the database
+├── backend/
+│   └── analysis.py
+├── data_ingestion/
+│   ├── __init__.py
+│   ├── cli.py
+│   ├── data_pipeline.py
+│   └── database.py
+├── web/
+│   ├── __init__.py
+│   └── routers.py
+├── frontend/
+│   ├── index.html
+│   ├── script.js
+│   └── styles.css
+├── .gitignore
+├── config.yaml
+├── Create_table.sql
+├── Dockerfile
+├── Dockerfile.ingestion
+├── docker-compose.yml
+├── main.py
+├── README.md
+├── requirements.txt
+└── setup.py
 ```
 
 ## Configuration
 
-The application is configured via the `config.yaml` file. Here is a description of the variables:
-
-### `source`
-
-| Variable                     | Description                                                                 |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| `url`                        | Base URL for downloading historical weather data from the DWD.              |
-| `zip_pattern`                | Regex pattern to find zip file names on the DWD server listing.             |
-| `product_pattern_to_extract` | Keyword to identify the actual product file within a zip archive.           |
-| `data_file_glob`             | Glob pattern for data files after extraction (e.g., "produkt_*.txt").       |
-| `header_keyword`             | Keyword to find the header line in the raw data files.                      |
-| `delimiter`                  | Delimiter used in the raw data files (e.g., ';', ',').                      |
-| `file_encoding`              | Encoding of the raw data files.                                             |
-| `na_value`                   | Value representing 'Not Available' or missing data in the raw files.        |
-| `download_dir`               | Directory where raw zip files are downloaded.                               |
-| `extract_dir`                | Directory where data files are extracted from zip archives.                 |
-| `zip_glob`                   | Glob pattern to find zip files in the download directory.                   |
-
-### `database`
-
-| Variable        | Description                                           |
-| --------------- | ----------------------------------------------------- |
-| `path`          | Path to the SQLite database file.                     |
-| `sql_file_path` | Path to the SQL script for creating database tables. |
+The application is configured using environment variables. The values in `docker-compose.yml` override the database settings.

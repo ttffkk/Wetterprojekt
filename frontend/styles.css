@@ -1,0 +1,95 @@
+:root {
+            --primary-color: #4A90E2;
+            --secondary-color: #50E3C2;
+            --background-color: #F4F6F8;
+            --card-background: #FFFFFF;
+            --text-color: #333;
+            --light-text-color: #777;
+            --border-color: #EAECEE;
+            --shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        body {
+            background-color: var(--background-color);
+            font-family: 'Inter', sans-serif;
+            color: var(--text-color);
+        }
+        #app {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .sidebar {
+            width: 400px;
+            flex-shrink: 0;
+            background-color: var(--card-background);
+            padding: 25px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border-color);
+        }
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        #map {
+            height: 60%;
+            width: 100%;
+        }
+        .analysis-section {
+            height: 40%;
+            padding: 25px;
+            overflow-y: auto;
+            background-color: var(--card-background);
+            border-top: 1px solid var(--border-color);
+        }
+        .sidebar h2 {
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .card {
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: transparent;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+        .autocomplete-results {
+            position: absolute;
+            background: var(--card-background);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            z-index: 1000;
+            width: calc(400px - 50px);
+            max-height: 250px;
+            overflow-y: auto;
+            box-shadow: var(--shadow);
+            margin-top: 5px;
+        }
+        .autocomplete-results .list-group-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .autocomplete-results .list-group-item:hover {
+            background-color: #f0f5ff;
+        }
+        .leaflet-popup-content-wrapper {
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
+        }

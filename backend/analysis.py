@@ -1,42 +1,62 @@
+import requests
 from geopy.geocoders import Nominatim
-from geopy.distance import geodesic
-from data_ingestion.database import Database
+from datetime import datetime, date
+from typing import Dict, Any, List
+
+from backend.database import Database
+
+METRIC_LABELS = {
+    "tmk": "Mean Temperature (°C)",
+    "txk": "Max Temperature (°C)",
+    "tnk": "Min Temperature (°C)",
+    "rsk": "Precipitation (mm)",
+    "upm": "Humidity (%)",
+}
 
 class Analysis:
     def __init__(self, db: Database):
         self.db = db
-        self.geolocator = Nominatim(user_agent="wetterprojekt")
+        self.geolocator = Nominatim(user_agent="wetterprojekt_analysis")
 
-    def find_nearest_stations(self, address: str, num_stations: int = 5):
-        """
-        Find the nearest weather stations to a given address.
+    async def get_all_stations(self) -> List[Dict[str, Any]]:
+        stations = await self.db.get_all_stations()
+        return stations
 
-        :param address: The address to geocode.
-        :param num_stations: The number of nearest stations to return.
-        :return: A list of tuples containing (station_id, name, distance_km).
-        """
-        try:
-            location = self.geolocator.geocode(address)
-            if not location:
-                print(f"Error: Could not geocode address '{address}'.")
-                return []
-        except Exception as e:
-            print(f"An error occurred during geocoding: {e}")
-            return []
+    async def get_nearest_stations(self, lat: float, lon: float) -> List[Dict[str, Any]]:
+        stations = await self.db.get_stations_with_distance(lat, lon, limit=5)
+        return stations
 
-        target_coords = (location.latitude, location.longitude)
-        all_stations = self.db.get_all_stations()
+    async def get_historical_data(self, station_id: int, start_date: date, end_date: date, aggregation: str) -> List[Dict[str, Any]]:
+        metrics = {
+            "avg_temp": "AVG(tmk)",
+            "max_temp": "MAX(txk)",
+            "min_temp": "MIN(tnk)",
+            "precipitation": "SUM(rsk)",
+            "avg_humidity": "AVG(upm)",
+        }
+        data = await self.db.get_aggregated_data(station_id, start_date, end_date, aggregation, metrics)
+        return data
 
-        stations_with_distance = []
-        for station in all_stations:
-            station_id, lat, lon, name = station
-            if lat is None or lon is None:
-                continue
-            station_coords = (lat, lon)
-            distance = geodesic(target_coords, station_coords).kilometers
-            stations_with_distance.append((station_id, name, distance))
+    async def get_chart_data(self, station_id: int, start_date: date, end_date: date, metric: str, aggregation: str) -> Dict[str, Any]:
+        metric_map = {
+            "tmk": "AVG(tmk)",
+            "txk": "MAX(txk)",
+            "tnk": "MIN(tnk)",
+            "rsk": "SUM(rsk)",
+            "upm": "AVG(upm)",
+        }
+        if metric.lower() not in metric_map:
+            raise ValueError("Invalid metric")
 
-        # Sort stations by distance
-        stations_with_distance.sort(key=lambda x: x[2])
-
-        return stations_with_distance[:num_stations]
+        metrics = {"value": metric_map[metric.lower()]}
+        rows = await self.db.get_aggregated_data(station_id, start_date, end_date, aggregation, metrics)
+        
+        return {
+            "metric": metric,
+            "metric_label": METRIC_LABELS.get(metric.lower(), "Unknown Metric"),
+            "station_id": station_id,
+            "aggregation": aggregation,
+            "start_date": start_date,
+            "end_date": end_date,
+            "rows": rows,
+        }

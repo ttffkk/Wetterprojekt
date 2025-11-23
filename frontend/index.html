@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wetteranalyse Deluxe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+</head>
+<body>
+    <div id="app">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h2 class="mb-4"><img src="https://openmoji.org/data/color/svg/1F326.svg" alt="Weather icon" style="height: 1em; vertical-align: -0.125em; margin-right: 0.25em;"> Wetteranalyse</h2>
+
+            <!-- Station Search -->
+            <div class="card">
+                <div class="card-header">Station Search</div>
+                <div class="card-body">
+                    <div class="position-relative">
+                        <input type="text" id="station-search" class="form-control" placeholder="Search by name or ID"
+                            v-model="searchQuery" @input="filterStations" @focus="searchFocused = true" @blur="hideAutocomplete">
+                        <div v-if="searchFocused && filteredStations.length" class="autocomplete-results">
+                            <ul class="list-group list-group-flush">
+                                <li v-for="station in filteredStations.slice(0, 10)" :key="station.station_id"
+                                    class="list-group-item" @mousedown="selectStation(station)">
+                                    <strong>{{ station.station_name }}</strong> ({{ station.station_id }})
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="form-check form-switch mt-3">
+                        <input class="form-check-input" type="checkbox" id="toggleStations" v-model="showStations" v-bind:aria-checked="showStations.toString()">
+                        <label class="form-check-label" for="toggleStations">Show All Stations</label>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- Nearest Stations -->
+            <div class="card">
+                <div class="card-header"><img src="https://openmoji.org/data/color/svg/1F6F0.svg" alt="Satellite icon" style="height: 1em; vertical-align: -0.125em; margin-right: 0.25em;"> Nearest Stations</div>
+                <div class="card-body p-0" v-if="nearestStations.length">
+                    <ul class="list-group list-group-flush">
+                        <li v-for="station in nearestStations" :key="station.station_id"
+                            class="list-group-item d-flex justify-content-between align-items-center"
+                            @click="selectStation(station)" style="cursor: pointer;">
+                            {{ station.station_name }}
+                            <span class="badge bg-primary rounded-pill">{{ station.distance_km.toFixed(1) }} km</span>
+                        </li>
+                    </ul>
+                </div>
+                 <div class="card-body text-muted" v-else>
+                    Click on the map to find nearest stations.
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div id="map"></div>
+            <div class="analysis-section">
+                <h3 class="mb-3">Historical Analysis</h3>
+                <div v-if="selectedStation.station_id">
+                    <div class="alert alert-info">Selected Station: <strong>{{ selectedStation.station_name }}</strong> (Available: {{ selectedStation.start_date }} to {{ selectedStation.end_date }})</div>
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col">
+                            <label for="start-date" class="form-label">Start Date</label>
+                            <input type="date" id="start-date" class="form-control" v-model="analysisParams.start_date">
+                        </div>
+                        <div class="col">
+                            <label for="end-date" class="form-label">End Date</label>
+                            <input type="date" id="end-date" class="form-control" v-model="analysisParams.end_date">
+                        </div>
+                        <div class="col">
+                            <label for="metric" class="form-label">Metric</label>
+                            <select id="metric" class="form-select" v-model="analysisParams.metric">
+                                <option value="tmk">Avg Temp</option>
+                                <option value="txk">Max Temp</option>
+                                <option value="tnk">Min Temp</option>
+                                <option value="rsk">Precipitation</option>
+                                <option value="upm">Humidity</option>
+                            </select>
+                        </div>
+                        <div class="col">
+                            <label for="aggregation" class="form-label">Aggregation</label>
+                            <select id="aggregation" class="form-select" v-model="analysisParams.aggregation">
+                                <option value="daily">Daily</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="yearly">Yearly</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary w-100" @click="runAnalysis">Analyze</button>
+                        </div>
+                    </div>
+
+                    <!-- Chart and Table -->
+                    <div class="mt-4" v-if="chartData.labels.length || historicalData.rows.length">
+                        <ul class="nav nav-tabs" id="analysisTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart-pane" type="button" role="tab">Chart</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-pane" type="button" role="tab">Data Table</button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="analysisTabContent">
+                            <div class="tab-pane fade show active" id="chart-pane" role="tabpanel">
+                                <div id="chart" class="mt-3"></div>
+                            </div>
+                            <div class="tab-pane fade" id="table-pane" role="tabpanel">
+                                 <div style="max-height: 200px; overflow-y: auto;" class="mt-3">
+                                    <table class="table table-sm table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Period</th>
+                                                <th>Avg Temp (°C)</th>
+                                                <th>Max Temp (°C)</th>
+                                                <th>Min Temp (°C)</th>
+                                                <th>Precipitation (mm)</th>
+                                                <th>Humidity (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="row in historicalData.rows">
+                                                <td>{{ row.period }}</td>
+                                                <td>{{ row.avg_temp?.toFixed(1) }}</td>
+                                                <td>{{ row.max_temp?.toFixed(1) }}</td>
+                                                <td>{{ row.min_temp?.toFixed(1) }}</td>
+                                                <td>{{ row.precipitation?.toFixed(1) }}</td>
+                                                <td>{{ row.avg_humidity?.toFixed(1) }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="text-muted text-center pt-5">
+                    <h5>Select a station to begin analysis</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.32.0/dist/plotly.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
