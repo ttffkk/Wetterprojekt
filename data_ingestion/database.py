@@ -17,8 +17,8 @@ class Database:
         """ create a database connection to the PostgreSQL database
             specified by db_config
         """
-        retries = 5
-        delay = 5
+        retries = 10
+        delay = 10
         for i in range(retries):
             try:
                 # Fallback to environment variables if not in config

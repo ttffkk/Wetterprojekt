@@ -1,12 +1,10 @@
 import os
 import re
-import zipfile
 import time
-import logging
+import zipfile
 
 import pandas as pd
 import requests
-import psycopg
 
 from .database import Database
 
