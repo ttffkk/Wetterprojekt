@@ -11,6 +11,15 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
+# Create a non-root user and group
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Change the ownership of the files
+RUN chown -R appuser:appgroup /app
+
+# Switch to the non-root user
+USER appuser
+
 # Expose the port the app runs on
 EXPOSE 8000
 
