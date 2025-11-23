@@ -1,4 +1,4 @@
-const { createApp, ref, onMounted, watch } = Vue;
+const { createApp, ref, onMounted, watch, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -87,6 +87,9 @@ const { createApp, ref, onMounted, watch } = Vue;
                         const data = await response.json();
                         chartData.value.labels = data.rows.map(r => r.period);
                         chartData.value.values = data.rows.map(r => r.value);
+                        
+                        await nextTick(); // Wait for the DOM to update
+
                         plotChart(data.metric_label);
                     } catch (error) {
                         console.error("Failed to fetch chart data:", error);
