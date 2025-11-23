@@ -10,7 +10,7 @@ app = FastAPI()
 app.include_router(routers.router)
 
 # Serve static files (Vue.js build)
-static_folder = os.path.join(os.path.dirname(__file__), "frontend")
+static_folder = os.path.abspath(os.path.join(os.path.dirname(__file__), "frontend"))
 
 # Mount a static directory for assets like CSS, JS, images if they are in a subfolder
 # For simplicity, we can assume they are in the root of the 'frontend' folder for now.
@@ -26,8 +26,14 @@ async def serve_frontend(full_path: str):
     # Path to the index.html file
     index_path = os.path.join(static_folder, "index.html")
 
+    # Sanitize and resolve the file path
+    file_path = os.path.abspath(os.path.join(static_folder, full_path))
+
+    # Check for path traversal attempts
+    if not file_path.startswith(static_folder):
+        return FileResponse(index_path)
+
     # Check if the requested path corresponds to an existing file in the static folder
-    file_path = os.path.join(static_folder, full_path)
     if os.path.isfile(file_path):
         return FileResponse(file_path)
 
