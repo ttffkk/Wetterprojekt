@@ -4,7 +4,7 @@ const { createApp, ref, onMounted, watch, nextTick } = Vue;
             setup() {
                 const map = ref(null);
                 const allStations = ref([]);
-                const stationMarkers = ref(null);
+                let markers = null;
                 const showStations = ref(false);
                 const searchQuery = ref('');
                 const filteredStations = ref([]);
@@ -33,7 +33,7 @@ const { createApp, ref, onMounted, watch, nextTick } = Vue;
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     }).addTo(map.value);
 
-                    stationMarkers.value = L.layerGroup();
+                    markers = L.markerClusterGroup();
 
                     fetchAllStations();
 
@@ -112,19 +112,21 @@ const { createApp, ref, onMounted, watch, nextTick } = Vue;
                 };
 
                 // --- Map and Station Logic ---
-                const updateStationMarkers = () => {
-                    stationMarkers.value.clearLayers();
-                    if (showStations.value) {
-                        allStations.value.forEach(station => {
+                // --- Watchers ---
+                watch(showStations, (newValue) => {
+                    if (newValue) {
+                        const stationMarkers = allStations.value.map(station => {
                             const marker = L.marker([station.latitude, station.longitude]);
                             marker.bindPopup(createPopupContent(station), { className: 'station-popup' });
-                            stationMarkers.value.addLayer(marker);
+                            return marker;
                         });
-                        stationMarkers.value.addTo(map.value);
+                        markers.addLayers(stationMarkers);
+                        map.value.addLayer(markers);
                     } else {
-                        map.value.removeLayer(stationMarkers.value);
+                        map.value.removeLayer(markers);
+                        markers.clearLayers();
                     }
-                };
+                });
 
                 const createPopupContent = (station) => {
                     const container = document.createElement('div');
@@ -208,7 +210,7 @@ const { createApp, ref, onMounted, watch, nextTick } = Vue;
                 };
 
                 // --- Watchers ---
-                watch(showStations, updateStationMarkers);
+
 
 
 

@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:13
+    image: postgres:latest
     command: postgres -c log_statement=all
     environment:
       POSTGRES_DB: wetter
